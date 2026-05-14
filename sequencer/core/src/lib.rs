@@ -1043,14 +1043,13 @@ mod tests {
         use nssa_core::{
             InputAccountIdentity, SharedSecretKey,
             account::AccountWithMetadata,
-            encryption::{EphemeralPublicKey, EphemeralSecretKey, ViewingPublicKey},
+            encryption::{EphemeralPublicKey, ViewingPublicKey},
         };
         use testnet_initial_state::PrivateAccountPublicInitialData;
 
         let nsk: nssa_core::NullifierSecretKey = [7; 32];
         let npk = nssa_core::NullifierPublicKey::from(&nsk);
-        let vsk: EphemeralSecretKey = [8; 32];
-        let vpk = ViewingPublicKey::from_scalar(vsk);
+        let vpk = ViewingPublicKey::from_seed(&[8u8; 32], &[9u8; 32]);
 
         let genesis_account = Account {
             program_owner: Program::authenticated_transfer_program().id(),
@@ -1068,9 +1067,7 @@ mod tests {
             SequencerCoreWithMockClients::start_from_config(config).await;
 
         // Attempt to re-initialize the same genesis account via a privacy-preserving transaction
-        let esk = [9; 32];
-        let shared_secret = SharedSecretKey::new(&esk, &vpk);
-        let epk = EphemeralPublicKey::from_scalar(esk);
+        let (shared_secret, epk) = SharedSecretKey::encapsulate_deterministic(&vpk, &[0u8; 32], 0);
 
         let (output, proof) = execute_and_prove(
             vec![AccountWithMetadata::new(

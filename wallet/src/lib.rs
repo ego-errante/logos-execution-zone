@@ -317,7 +317,7 @@ impl WalletCore {
     }
 
     /// Set the wallet's dedicated sealing secret key.
-    pub const fn set_sealing_secret_key(&mut self, key: nssa_core::encryption::Scalar) {
+    pub fn set_sealing_secret_key(&mut self, key: key_protocol::key_management::secret_holders::ViewingSecretKey) {
         self.storage.user_data.sealing_secret_key = Some(key);
     }
 
@@ -791,7 +791,7 @@ impl WalletCore {
                     continue;
                 }
 
-                let shared_secret = SharedSecretKey::new(&vsk, &encrypted_data.epk);
+                let shared_secret = SharedSecretKey::decapsulate(&encrypted_data.epk, &vsk.d, &vsk.r);
                 let commitment = &tx.message.new_commitments[ciph_id];
 
                 if let Some((_kind, new_acc)) = nssa_core::EncryptionScheme::decrypt(

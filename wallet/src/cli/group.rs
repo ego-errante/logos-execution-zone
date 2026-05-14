@@ -1,6 +1,6 @@
 use anyhow::{Context as _, Result};
 use clap::Subcommand;
-use key_protocol::key_management::group_key_holder::{GroupKeyHolder, SealingPublicKey};
+use key_protocol::key_management::{group_key_holder::{GroupKeyHolder, SealingPublicKey}, secret_holders::ViewingSecretKey};
 
 use crate::{
     WalletCore,
@@ -120,7 +120,7 @@ impl WalletSubcommand for GroupSubcommand {
                 }
 
                 let sealing_key =
-                    wallet_core.storage().user_data.sealing_secret_key.context(
+                    wallet_core.storage().user_data.sealing_secret_key.clone().context(
                         "No sealing key found. Run 'wallet group new-sealing-key' first.",
                     )?;
 
@@ -141,9 +141,13 @@ impl WalletSubcommand for GroupSubcommand {
                     anyhow::bail!("Sealing key already exists. Each wallet has one sealing key.");
                 }
 
-                let mut secret: nssa_core::encryption::Scalar = [0_u8; 32];
-                rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut secret);
-                let public_key = SealingPublicKey::from_scalar(secret);
+                let mut d = [0_u8; 32];
+                let mut r = [0_u8; 32];
+                rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut d);
+                rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut r);
+                let secret = ViewingSecretKey { d, r };
+                let ek_bytes = nssa_core::encryption::ViewingPublicKey::from_seed(&d, &r).0;
+                let public_key = SealingPublicKey::from_bytes(ek_bytes);
 
                 wallet_core.set_sealing_secret_key(secret);
                 wallet_core.store_persistent_data().await?;

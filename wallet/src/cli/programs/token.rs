@@ -898,11 +898,7 @@ impl WalletSubcommand for TokenProgramSubcommandPrivate {
                 let recipient_npk = nssa_core::NullifierPublicKey(recipient_npk);
 
                 let recipient_vpk_res = hex::decode(recipient_vpk)?;
-                let mut recipient_vpk = [0_u8; 33];
-                recipient_vpk.copy_from_slice(&recipient_vpk_res);
-                let recipient_vpk = nssa_core::encryption::shared_key_derivation::Secp256k1Point(
-                    recipient_vpk.to_vec(),
-                );
+                let recipient_vpk = nssa_core::encryption::ViewingPublicKey(recipient_vpk_res);
 
                 let (tx_hash, [secret_sender, _]) = Token(wallet_core)
                     .send_transfer_transaction_private_foreign_account(
@@ -1018,11 +1014,7 @@ impl WalletSubcommand for TokenProgramSubcommandPrivate {
                 let holder_npk = nssa_core::NullifierPublicKey(holder_npk);
 
                 let holder_vpk_res = hex::decode(holder_vpk)?;
-                let mut holder_vpk = [0_u8; 33];
-                holder_vpk.copy_from_slice(&holder_vpk_res);
-                let holder_vpk = nssa_core::encryption::shared_key_derivation::Secp256k1Point(
-                    holder_vpk.to_vec(),
-                );
+                let holder_vpk = nssa_core::encryption::ViewingPublicKey(holder_vpk_res);
 
                 let (tx_hash, [secret_definition, _]) = Token(wallet_core)
                     .send_mint_transaction_private_foreign_account(
@@ -1184,11 +1176,7 @@ impl WalletSubcommand for TokenProgramSubcommandShielded {
                 let recipient_npk = nssa_core::NullifierPublicKey(recipient_npk);
 
                 let recipient_vpk_res = hex::decode(recipient_vpk)?;
-                let mut recipient_vpk = [0_u8; 33];
-                recipient_vpk.copy_from_slice(&recipient_vpk_res);
-                let recipient_vpk = nssa_core::encryption::shared_key_derivation::Secp256k1Point(
-                    recipient_vpk.to_vec(),
-                );
+                let recipient_vpk = nssa_core::encryption::ViewingPublicKey(recipient_vpk_res);
 
                 let (tx_hash, _) = Token(wallet_core)
                     .send_transfer_transaction_shielded_foreign_account(
@@ -1326,11 +1314,7 @@ impl WalletSubcommand for TokenProgramSubcommandShielded {
                 let holder_npk = nssa_core::NullifierPublicKey(holder_npk);
 
                 let holder_vpk_res = hex::decode(holder_vpk)?;
-                let mut holder_vpk = [0_u8; 33];
-                holder_vpk.copy_from_slice(&holder_vpk_res);
-                let holder_vpk = nssa_core::encryption::shared_key_derivation::Secp256k1Point(
-                    holder_vpk.to_vec(),
-                );
+                let holder_vpk = nssa_core::encryption::ViewingPublicKey(holder_vpk_res);
 
                 let (tx_hash, _) = Token(wallet_core)
                     .send_mint_transaction_shielded_foreign_account(

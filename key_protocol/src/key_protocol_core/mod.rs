@@ -55,7 +55,7 @@ pub struct NSSAUserData {
     /// Dedicated sealing secret key for GMS distribution. Generated once via
     /// `wallet group new-sealing-key`. The corresponding public key is shared with
     /// group members so they can seal GMS for this wallet.
-    pub sealing_secret_key: Option<nssa_core::encryption::Scalar>,
+    pub sealing_secret_key: Option<crate::key_management::secret_holders::ViewingSecretKey>,
 }
 
 impl NSSAUserData {
