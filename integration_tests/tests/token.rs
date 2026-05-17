@@ -105,7 +105,8 @@ async fn create_and_transfer_public_token() -> Result<()> {
         TokenDefinition::Fungible {
             name: name.clone(),
             total_supply,
-            metadata_id: None
+            metadata_id: None,
+            mint_authority: None,
         }
     );
 
@@ -197,7 +198,8 @@ async fn create_and_transfer_public_token() -> Result<()> {
         TokenDefinition::Fungible {
             name: name.clone(),
             total_supply: total_supply - burn_amount,
-            metadata_id: None
+            metadata_id: None,
+            mint_authority: None,
         }
     );
 
@@ -244,7 +246,8 @@ async fn create_and_transfer_public_token() -> Result<()> {
         TokenDefinition::Fungible {
             name,
             total_supply: total_supply - burn_amount + mint_amount,
-            metadata_id: None
+            metadata_id: None,
+            mint_authority: None,
         }
     );
 
@@ -348,7 +351,8 @@ async fn create_and_transfer_token_with_private_supply() -> Result<()> {
         TokenDefinition::Fungible {
             name: name.clone(),
             total_supply,
-            metadata_id: None
+            metadata_id: None,
+            mint_authority: None,
         }
     );
 
@@ -411,7 +415,8 @@ async fn create_and_transfer_token_with_private_supply() -> Result<()> {
         TokenDefinition::Fungible {
             name,
             total_supply: total_supply - burn_amount,
-            metadata_id: None
+            metadata_id: None,
+            mint_authority: None,
         }
     );
 
@@ -575,7 +580,8 @@ async fn create_token_with_private_definition() -> Result<()> {
         TokenDefinition::Fungible {
             name: name.clone(),
             total_supply: total_supply + mint_amount_public,
-            metadata_id: None
+            metadata_id: None,
+            mint_authority: None,
         }
     );
 
@@ -1228,7 +1234,8 @@ async fn create_token_using_labels() -> Result<()> {
         TokenDefinition::Fungible {
             name,
             total_supply,
-            metadata_id: None
+            metadata_id: None,
+            mint_authority: None,
         }
     );
 

@@ -42,6 +42,22 @@ fn main() {
                 total_supply,
             )
         }
+        Instruction::NewFungibleDefinitionWithAuthority {
+            name,
+            total_supply,
+            mint_authority,
+        } => {
+            let [definition_account, holding_account] = pre_states.try_into().expect(
+                "NewFungibleDefinitionWithAuthority instruction requires exactly two accounts",
+            );
+            token_program::new_definition::new_fungible_definition_with_authority(
+                definition_account,
+                holding_account,
+                name,
+                total_supply,
+                mint_authority,
+            )
+        }
         Instruction::NewDefinitionWithMetadata {
             new_definition,
             metadata,
@@ -74,6 +90,17 @@ fn main() {
                 .try_into()
                 .expect("Mint instruction requires exactly two accounts");
             token_program::mint::mint(definition_account, user_holding_account, amount_to_mint)
+        }
+        Instruction::MintWithAuthority { amount_to_mint } => {
+            let [definition_account, user_holding_account, authority_account] = pre_states
+                .try_into()
+                .expect("MintWithAuthority instruction requires exactly three accounts");
+            token_program::mint::mint_with_authority(
+                definition_account,
+                user_holding_account,
+                authority_account,
+                amount_to_mint,
+            )
         }
         Instruction::PrintNft => {
             let [master_account, printed_account] = pre_states

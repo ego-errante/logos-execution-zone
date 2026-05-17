@@ -679,6 +679,7 @@ impl AccountWithMetadataForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::lp_supply_init(),
                     metadata_id: None,
+                    mint_authority: None,
                 }),
                 nonce: 0_u128.into(),
             },
@@ -696,6 +697,7 @@ impl AccountWithMetadataForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::lp_supply_init(),
                     metadata_id: None,
+                    mint_authority: None,
                 }),
                 nonce: 0_u128.into(),
             },
@@ -1401,6 +1403,7 @@ impl AccountsForExeTests {
                 name: String::from("test"),
                 total_supply: BalanceForExeTests::token_a_supply(),
                 metadata_id: None,
+                mint_authority: None,
             }),
             nonce: 0_u128.into(),
         }
@@ -1414,6 +1417,7 @@ impl AccountsForExeTests {
                 name: String::from("test"),
                 total_supply: BalanceForExeTests::token_b_supply(),
                 metadata_id: None,
+                mint_authority: None,
             }),
             nonce: 0_u128.into(),
         }
@@ -1427,6 +1431,7 @@ impl AccountsForExeTests {
                 name: String::from("LP Token"),
                 total_supply: BalanceForExeTests::token_lp_supply(),
                 metadata_id: None,
+                mint_authority: None,
             }),
             nonce: 0_u128.into(),
         }
@@ -1692,6 +1697,7 @@ impl AccountsForExeTests {
                 name: String::from("LP Token"),
                 total_supply: BalanceForExeTests::token_lp_supply_add(),
                 metadata_id: None,
+                mint_authority: None,
             }),
             nonce: 0_u128.into(),
         }
@@ -1785,6 +1791,7 @@ impl AccountsForExeTests {
                 name: String::from("LP Token"),
                 total_supply: BalanceForExeTests::token_lp_supply_remove(),
                 metadata_id: None,
+                mint_authority: None,
             }),
             nonce: 0_u128.into(),
         }
@@ -1798,6 +1805,7 @@ impl AccountsForExeTests {
                 name: String::from("LP Token"),
                 total_supply: 0,
                 metadata_id: None,
+                mint_authority: None,
             }),
             nonce: 0_u128.into(),
         }
@@ -1891,6 +1899,7 @@ impl AccountsForExeTests {
                 name: String::from("LP Token"),
                 total_supply: BalanceForExeTests::lp_supply_init(),
                 metadata_id: None,
+                mint_authority: None,
             }),
             nonce: 0_u128.into(),
         }

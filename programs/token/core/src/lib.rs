@@ -21,6 +21,22 @@ pub enum Instruction {
     /// - Token Holding account (uninitialized, authorized).
     NewFungibleDefinition { name: String, total_supply: u128 },
 
+    /// Create a new fungible token definition without metadata, with a mint authority
+    /// that gates subsequent [`Self::MintWithAuthority`] calls (LP-0013 / RFP-001).
+    ///
+    /// `mint_authority` is the `AccountId` whose authorization claim must be present
+    /// on every subsequent mint. `None` is a permanent-revocation marker that disables
+    /// further minting from definition creation onward.
+    ///
+    /// Required accounts:
+    /// - Token Definition account (uninitialized, authorized),
+    /// - Token Holding account (uninitialized, authorized).
+    NewFungibleDefinitionWithAuthority {
+        name: String,
+        total_supply: u128,
+        mint_authority: Option<AccountId>,
+    },
+
     /// Create a new fungible or non-fungible token definition with metadata.
     ///
     /// Required accounts:
@@ -54,6 +70,19 @@ pub enum Instruction {
     /// - Token Holding account (uninitialized or authorized and initialized).
     Mint { amount_to_mint: u128 },
 
+    /// Mint new tokens, gated by the mint authority recorded on the Token Definition
+    /// (LP-0013 / RFP-001). Panics with [`TokenError::Unauthorized`] if the authority
+    /// account is not authorized or its id does not match the recorded authority.
+    /// Panics with [`TokenError::AuthorityRevoked`] if the definition's mint authority
+    /// is `None`.
+    ///
+    /// Required accounts (order matters):
+    /// - Token Definition account (initialized, any authorization),
+    /// - Token Holding account (uninitialized or authorized and initialized),
+    /// - Mint Authority account (must be authorized; its id must equal the
+    ///   `mint_authority` field on the Token Definition).
+    MintWithAuthority { amount_to_mint: u128 },
+
     /// Print a new NFT from the master copy.
     ///
     /// Required accounts:
@@ -80,12 +109,46 @@ pub enum TokenDefinition {
         name: String,
         total_supply: u128,
         metadata_id: Option<AccountId>,
+        /// Account permitted to mint additional supply (LP-0013 / RFP-001).
+        /// `None` for legacy definitions created via [`Instruction::NewFungibleDefinition`]
+        /// or after the authority has been revoked. The presence of an authority does NOT
+        /// gate the existing [`Instruction::Mint`] path; only [`Instruction::MintWithAuthority`]
+        /// checks this field.
+        ///
+        /// NOTE: this field is a breaking change to the Borsh layout of pre-existing
+        /// `TokenDefinition::Fungible` accounts. LEZ has no backward-compat guarantee
+        /// for in-flight schema changes; see solution README for the deferred
+        /// `FungibleV2` / separate-PDA alternatives.
+        mint_authority: Option<AccountId>,
     },
     NonFungible {
         name: String,
         printable_supply: u128,
         metadata_id: AccountId,
     },
+}
+
+/// Deterministic error variants raised by the Token program when an instruction
+/// fails a precondition. Used as the panic message body so the off-chain caller
+/// can grep for a stable identifier; see [`Instruction::MintWithAuthority`] for
+/// the authorization paths that emit these.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum TokenError {
+    /// The supplied authority account is not authorized, or its id does not match
+    /// the `mint_authority` recorded on the Token Definition.
+    Unauthorized,
+    /// The Token Definition's `mint_authority` is `None` — minting via
+    /// [`Instruction::MintWithAuthority`] is permanently disabled for this token.
+    AuthorityRevoked,
+}
+
+impl std::fmt::Display for TokenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unauthorized => f.write_str("TokenError::Unauthorized"),
+            Self::AuthorityRevoked => f.write_str("TokenError::AuthorityRevoked"),
+        }
+    }
 }
 
 impl TryFrom<&Data> for TokenDefinition {

@@ -345,6 +345,7 @@ async fn transfer_and_burn_via_ata() -> Result<()> {
             name: "TEST".to_owned(),
             total_supply: total_supply - burn_amount,
             metadata_id: None,
+            mint_authority: None,
         }
     );
 
@@ -645,6 +646,7 @@ async fn burn_via_ata_private_owner() -> Result<()> {
             name: "TEST".to_owned(),
             total_supply: total_supply - burn_amount,
             metadata_id: None,
+            mint_authority: None,
         }
     );
 
