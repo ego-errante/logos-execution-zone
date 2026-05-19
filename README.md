@@ -237,3 +237,29 @@ With that you can send transactions from local wallet to the Sequencer running i
 
 If you're going to build sequencer image locally you should better adjust default docker settings and set `defaultKeepStorage` at least `25GB` so that it can keep layers properly cached.
 
+---
+
+## LP-0013 — Token program: authorities
+
+This fork adds rotatable mint-authority support to the Token program (additive
+`NewFungibleDefinitionWithAuthority` and `MintWithAuthority` instruction
+variants) plus an `Option<AccountId>` `mint_authority` pointer on
+`TokenDefinition::Fungible`. Authority gating uses the privacy-preserving
+circuit's `is_authorized` flag on a dedicated authority account, mirroring the
+SPL Token mint-authority model adapted for LEZ's per-account authorization
+semantics.
+
+`demo.sh` at the repo root runs the end-to-end tracer:
+
+```bash
+./demo.sh
+```
+
+It builds the Token program artifact, starts a standalone sequencer, creates
+four public accounts, defines a fungible token with a mint authority, mints
+1000 units through the authority, and prints the holder balance. Logs are
+written to `demo.log`. Prerequisites are listed in the script header.
+
+The submission writeup lives at
+[`logos-co/lambda-prize` → `solutions/LP-0013.md`](https://github.com/logos-co/lambda-prize).
+

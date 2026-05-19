@@ -12,3 +12,17 @@ result
 wallet-ffi/wallet_ffi.h
 bedrock_signing_key
 integration_tests/configs/debug/
+
+# macOS Finder metadata
+.DS_Store
+
+# AI coding-assistant workspaces (LP-0013 submission was developed with assistance)
+.claude/
+.cursor/
+.aider/
+.copilot/
+.windsurf/
+.bolt/
+
+# LP-0013 demo output
+demo.log
