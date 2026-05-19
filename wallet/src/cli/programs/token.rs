@@ -100,6 +100,38 @@ pub enum TokenProgramAgnosticSubcommand {
         #[arg(long)]
         amount: u128,
     },
+    /// Define a new fungible token with an optional rotatable mint authority (LP-0013).
+    ///
+    /// If `--mint-authority` is omitted, the Token Definition is created with no
+    /// authority. `mint-with-authority` will then fail with
+    /// `TokenError::AuthorityRevoked` until an authority is assigned. Public
+    /// accounts only in this tracer-slice; private variants pending Day-3-4 deepen.
+    NewFungibleWithAuthority {
+        #[arg(long)]
+        definition_account_id: AccountId,
+        #[arg(long)]
+        supply_account_id: AccountId,
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        total_supply: u128,
+        #[arg(long)]
+        mint_authority: Option<AccountId>,
+    },
+    /// Mint additional supply, gated by the Token Definition's recorded mint
+    /// authority (LP-0013). Panics with `TokenError::Unauthorized` if the supplied
+    /// authority account does not match, or `TokenError::AuthorityRevoked` if the
+    /// definition's authority is `None`.
+    MintWithAuthority {
+        #[arg(long)]
+        definition_account_id: AccountId,
+        #[arg(long)]
+        holder_account_id: AccountId,
+        #[arg(long)]
+        authority_account_id: AccountId,
+        #[arg(long)]
+        amount: u128,
+    },
 }
 
 impl WalletSubcommand for TokenProgramAgnosticSubcommand {
@@ -399,6 +431,40 @@ impl WalletSubcommand for TokenProgramAgnosticSubcommand {
                 };
 
                 underlying_subcommand.handle_subcommand(wallet_core).await
+            }
+            Self::NewFungibleWithAuthority {
+                definition_account_id,
+                supply_account_id,
+                name,
+                total_supply,
+                mint_authority,
+            } => {
+                Token(wallet_core)
+                    .send_new_definition_with_authority(
+                        definition_account_id,
+                        supply_account_id,
+                        name,
+                        total_supply,
+                        mint_authority,
+                    )
+                    .await?;
+                Ok(SubcommandReturnValue::Empty)
+            }
+            Self::MintWithAuthority {
+                definition_account_id,
+                holder_account_id,
+                authority_account_id,
+                amount,
+            } => {
+                Token(wallet_core)
+                    .send_mint_with_authority(
+                        definition_account_id,
+                        holder_account_id,
+                        authority_account_id,
+                        amount,
+                    )
+                    .await?;
+                Ok(SubcommandReturnValue::Empty)
             }
         }
     }

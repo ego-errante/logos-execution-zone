@@ -775,4 +775,128 @@ impl Token<'_> {
                 (resp, first)
             })
     }
+
+    pub async fn send_new_definition_with_authority(
+        &self,
+        definition_account_id: AccountId,
+        supply_account_id: AccountId,
+        name: String,
+        total_supply: u128,
+        mint_authority: Option<AccountId>,
+    ) -> Result<HashType, ExecutionFailureKind> {
+        let account_ids = vec![definition_account_id, supply_account_id];
+        let program_id = nssa::program::Program::token().id();
+        let instruction = Instruction::NewFungibleDefinitionWithAuthority {
+            name,
+            total_supply,
+            mint_authority,
+        };
+        let nonces = self
+            .0
+            .get_accounts_nonces(account_ids.clone())
+            .await
+            .map_err(ExecutionFailureKind::SequencerError)?;
+        let message = nssa::public_transaction::Message::try_new(
+            program_id,
+            account_ids,
+            nonces,
+            instruction,
+        )
+        .unwrap();
+
+        let def_private_key = self
+            .0
+            .storage
+            .key_chain()
+            .pub_account_signing_key(definition_account_id)
+            .ok_or(ExecutionFailureKind::KeyNotFoundError)?;
+        let supply_private_key = self
+            .0
+            .storage
+            .key_chain()
+            .pub_account_signing_key(supply_account_id)
+            .ok_or(ExecutionFailureKind::KeyNotFoundError)?;
+
+        let witness_set = nssa::public_transaction::WitnessSet::for_message(
+            &message,
+            &[def_private_key, supply_private_key],
+        );
+
+        let tx = nssa::PublicTransaction::new(message, witness_set);
+
+        Ok(self
+            .0
+            .sequencer_client
+            .send_transaction(NSSATransaction::Public(tx))
+            .await?)
+    }
+
+    pub async fn send_mint_with_authority(
+        &self,
+        definition_account_id: AccountId,
+        holder_account_id: AccountId,
+        authority_account_id: AccountId,
+        amount: u128,
+    ) -> Result<HashType, ExecutionFailureKind> {
+        let account_ids = vec![
+            definition_account_id,
+            holder_account_id,
+            authority_account_id,
+        ];
+        let instruction = Instruction::MintWithAuthority {
+            amount_to_mint: amount,
+        };
+
+        let mut nonces = self
+            .0
+            .get_accounts_nonces(vec![authority_account_id])
+            .await
+            .map_err(ExecutionFailureKind::SequencerError)?;
+
+        let mut private_keys = Vec::new();
+        let authority_sk = self
+            .0
+            .storage
+            .key_chain()
+            .pub_account_signing_key(authority_account_id)
+            .ok_or(ExecutionFailureKind::KeyNotFoundError)?;
+        private_keys.push(authority_sk);
+
+        if let Some(holder_sk) = self
+            .0
+            .storage
+            .key_chain()
+            .pub_account_signing_key(holder_account_id)
+        {
+            private_keys.push(holder_sk);
+            let holder_nonces = self
+                .0
+                .get_accounts_nonces(vec![holder_account_id])
+                .await
+                .map_err(ExecutionFailureKind::SequencerError)?;
+            nonces.extend(holder_nonces);
+        } else {
+            println!(
+                "Holder's account ({holder_account_id}) private key not found in wallet. Proceeding with only authority's key."
+            );
+        }
+
+        let message = nssa::public_transaction::Message::try_new(
+            Program::token().id(),
+            account_ids,
+            nonces,
+            instruction,
+        )
+        .unwrap();
+        let witness_set =
+            nssa::public_transaction::WitnessSet::for_message(&message, &private_keys);
+
+        let tx = nssa::PublicTransaction::new(message, witness_set);
+
+        Ok(self
+            .0
+            .sequencer_client
+            .send_transaction(NSSATransaction::Public(tx))
+            .await?)
+    }
 }
