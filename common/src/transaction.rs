@@ -67,7 +67,11 @@ impl NSSATransaction {
     }
 
     /// Validates the transaction against the current state and returns the resulting diff
-    /// without applying it. Rejects transactions that modify clock system accounts.
+    /// without applying it. Rejects transactions that modify clock or faucet system accounts,
+    /// whether directly or indirectly via chain calls.
+    ///
+    /// This check is required for all user transactions. Only sequencer transactions may bypass
+    /// this check.
     pub fn validate_on_state(
         &self,
         state: &V03State,
@@ -95,6 +99,16 @@ impl NSSATransaction {
         if touches_clock {
             return Err(nssa::error::NssaError::InvalidInput(
                 "Transaction modifies system clock accounts".into(),
+            ));
+        }
+
+        let faucet_id = nssa::system_faucet_account_id();
+        if public_diff
+            .get(&faucet_id)
+            .is_some_and(|post| *post != state.get_account_by_id(faucet_id))
+        {
+            return Err(nssa::error::NssaError::InvalidInput(
+                "Transaction modifies system faucet account".into(),
             ));
         }
 

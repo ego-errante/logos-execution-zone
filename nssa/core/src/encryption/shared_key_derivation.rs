@@ -14,7 +14,7 @@ use ml_kem::{Decapsulate as _, Encapsulate as _, KeyExport as _, Seed};
 use serde::{Deserialize, Serialize};
 
 use crate::{SharedSecretKey, encryption::Scalar};
-
+/// Marvin-pq check this
 /// A compressed secp256k1 point (33 bytes).
 /// Kept for backward compatibility with Phase-2+ callers; no longer used as `EphemeralPublicKey`.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]

@@ -122,15 +122,36 @@ pub struct V03State {
     programs: HashMap<ProgramId, Program>,
 }
 
+impl Default for V03State {
+    fn default() -> Self {
+        let faucet_account_id = system_faucet_account_id();
+        let faucet_account = system_faucet_account();
+        let mut public_state = HashMap::new();
+        public_state.insert(faucet_account_id, faucet_account);
+
+        Self {
+            public_state,
+            private_state: (CommitmentSet::with_capacity(32), NullifierSet::new()),
+            programs: HashMap::new(),
+        }
+    }
+}
+
 impl V03State {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     #[must_use]
     pub fn new_with_genesis_accounts(
         initial_data: &[(AccountId, u128)],
         initial_private_accounts: Vec<(Commitment, Nullifier)>,
         genesis_timestamp: nssa_core::Timestamp,
     ) -> Self {
+        let faucet_account_id = system_faucet_account_id();
         let authenticated_transfer_program = Program::authenticated_transfer_program();
-        let public_state = initial_data
+        let mut public_state: HashMap<_, _> = initial_data
             .iter()
             .copied()
             .map(|(account_id, balance)| {
@@ -142,6 +163,8 @@ impl V03State {
                 (account_id, account)
             })
             .collect();
+        let faucet_account = system_faucet_account();
+        public_state.insert(faucet_account_id, faucet_account);
 
         let mut commitment_set = CommitmentSet::with_capacity(32);
         commitment_set.extend(&[DUMMY_COMMITMENT]);
@@ -165,6 +188,8 @@ impl V03State {
         this.insert_program(Program::token());
         this.insert_program(Program::amm());
         this.insert_program(Program::ata());
+        this.insert_program(Program::vault());
+        this.insert_program(Program::faucet());
 
         this
     }
@@ -351,6 +376,19 @@ impl V03State {
     }
 }
 
+fn system_faucet_account() -> Account {
+    Account {
+        program_owner: Program::authenticated_transfer_program().id(),
+        balance: u128::MAX,
+        ..Account::default()
+    }
+}
+
+#[must_use]
+pub fn system_faucet_account_id() -> AccountId {
+    faucet_core::compute_faucet_account_id(Program::faucet().id())
+}
+
 #[cfg(test)]
 pub mod tests {
     #![expect(
@@ -361,6 +399,7 @@ pub mod tests {
 
     use std::collections::HashMap;
 
+    use authenticated_transfer_core::Instruction as AuthTransferInstruction;
     use nssa_core::{
         BlockId, Commitment, InputAccountIdentity, Nullifier, NullifierPublicKey,
         NullifierSecretKey, SharedSecretKey, Timestamp,
@@ -387,8 +426,9 @@ pub mod tests {
         signature::PrivateKey,
         state::{
             CLOCK_01_PROGRAM_ACCOUNT_ID, CLOCK_10_PROGRAM_ACCOUNT_ID, CLOCK_50_PROGRAM_ACCOUNT_ID,
-            CLOCK_PROGRAM_ACCOUNT_IDS, MAX_NUMBER_CHAINED_CALLS,
+            CLOCK_PROGRAM_ACCOUNT_IDS, MAX_NUMBER_CHAINED_CALLS, system_faucet_account,
         },
+        system_faucet_account_id,
     };
 
     impl V03State {
@@ -526,8 +566,13 @@ pub mod tests {
         let account_ids = vec![from, to];
         let nonces = vec![Nonce(from_nonce), Nonce(to_nonce)];
         let program_id = Program::authenticated_transfer_program().id();
-        let message =
-            public_transaction::Message::try_new(program_id, account_ids, nonces, balance).unwrap();
+        let message = public_transaction::Message::try_new(
+            program_id,
+            account_ids,
+            nonces,
+            AuthTransferInstruction::Transfer { amount: balance },
+        )
+        .unwrap();
         let witness_set =
             public_transaction::WitnessSet::for_message(&message, &[from_key, to_key]);
         PublicTransaction::new(message, witness_set)
@@ -577,6 +622,7 @@ pub mod tests {
                     ..Account::default()
                 },
             );
+            this.insert(system_faucet_account_id(), system_faucet_account());
             for account_id in CLOCK_PROGRAM_ACCOUNT_IDS {
                 this.insert(
                     account_id,
@@ -599,6 +645,8 @@ pub mod tests {
             this.insert(Program::token().id(), Program::token());
             this.insert(Program::amm().id(), Program::amm());
             this.insert(Program::ata().id(), Program::ata());
+            this.insert(Program::vault().id(), Program::vault());
+            this.insert(Program::faucet().id(), Program::faucet());
             this
         };
 
@@ -1207,7 +1255,7 @@ pub mod tests {
         let witness_set = public_transaction::WitnessSet::for_message(&message, &[]);
         let tx = PublicTransaction::new(message, witness_set);
 
-        let result = state.transition_from_public_transaction(&tx, 1, 0);
+        let result = state.transition_from_public_transaction(&tx, 2, 0);
 
         assert!(matches!(
             result,
@@ -1241,7 +1289,7 @@ pub mod tests {
         .unwrap();
         let witness_set = public_transaction::WitnessSet::for_message(&message, &[]);
         let tx = PublicTransaction::new(message, witness_set);
-        let result = state.transition_from_public_transaction(&tx, 1, 0);
+        let result = state.transition_from_public_transaction(&tx, 2, 0);
 
         assert!(matches!(
             result,
@@ -1301,7 +1349,10 @@ pub mod tests {
 
         let (output, proof) = circuit::execute_and_prove(
             vec![sender, recipient],
-            Program::serialize_instruction(balance_to_move).unwrap(),
+            Program::serialize_instruction(AuthTransferInstruction::Transfer {
+                amount: balance_to_move,
+            })
+            .unwrap(),
             vec![
                 InputAccountIdentity::Public,
                 InputAccountIdentity::PrivateUnauthorized {
@@ -1352,7 +1403,10 @@ pub mod tests {
 
         let (output, proof) = circuit::execute_and_prove(
             vec![sender_pre, recipient_pre],
-            Program::serialize_instruction(balance_to_move).unwrap(),
+            Program::serialize_instruction(AuthTransferInstruction::Transfer {
+                amount: balance_to_move,
+            })
+            .unwrap(),
             vec![
                 InputAccountIdentity::PrivateAuthorizedUpdate {
                     ssk: shared_secret_1,
@@ -1414,7 +1468,10 @@ pub mod tests {
 
         let (output, proof) = circuit::execute_and_prove(
             vec![sender_pre, recipient_pre],
-            Program::serialize_instruction(balance_to_move).unwrap(),
+            Program::serialize_instruction(AuthTransferInstruction::Transfer {
+                amount: balance_to_move,
+            })
+            .unwrap(),
             vec![
                 InputAccountIdentity::PrivateAuthorizedUpdate {
                     ssk: shared_secret,
@@ -2618,7 +2675,7 @@ pub mod tests {
             program.id(),
             vec![from, to],
             vec![Nonce(0), Nonce(0)],
-            amount,
+            AuthTransferInstruction::Transfer { amount },
         )
         .unwrap();
         let witness_set =
@@ -2641,15 +2698,19 @@ pub mod tests {
 
         assert_eq!(state.get_account_by_id(account_id), Account::default());
 
-        let message =
-            public_transaction::Message::try_new(program.id(), vec![account_id], vec![], 0_u128)
-                .unwrap();
+        let message = public_transaction::Message::try_new(
+            program.id(),
+            vec![account_id],
+            vec![],
+            AuthTransferInstruction::Initialize,
+        )
+        .unwrap();
         let witness_set = public_transaction::WitnessSet::for_message(&message, &[]);
         let tx = PublicTransaction::new(message, witness_set);
 
-        let result = state.transition_from_public_transaction(&tx, 1, 0);
+        let result = state.transition_from_public_transaction(&tx, 2, 0);
 
-        assert!(matches!(result, Err(NssaError::ProgramExecutionFailed(_))));
+        assert!(matches!(result, Err(NssaError::InvalidProgramBehavior(_))));
         assert_eq!(state.get_account_by_id(account_id), Account::default());
     }
 
@@ -2666,7 +2727,7 @@ pub mod tests {
             program.id(),
             vec![account_id],
             vec![Nonce(0)],
-            0_u128,
+            AuthTransferInstruction::Initialize,
         )
         .unwrap();
         let witness_set = public_transaction::WitnessSet::for_message(&message, &[&account_key]);
@@ -2874,12 +2935,12 @@ pub mod tests {
 
         let result = execute_and_prove(
             vec![public_account],
-            Program::serialize_instruction(0_u128).unwrap(),
+            Program::serialize_instruction(AuthTransferInstruction::Initialize).unwrap(),
             vec![InputAccountIdentity::Public],
             &program.into(),
         );
 
-        assert!(matches!(result, Err(NssaError::ProgramProveFailed(_))));
+        assert!(matches!(result, Err(NssaError::CircuitProvingError(_))));
     }
 
     #[test]
@@ -2910,9 +2971,14 @@ pub mod tests {
         let (shared_secret, epk) =
             SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0u8; 32], 0);
 
+        let balance = 37;
+
         let (output, proof) = execute_and_prove(
             vec![sender_pre, recipient_pre],
-            Program::serialize_instruction(37_u128).unwrap(),
+            Program::serialize_instruction(authenticated_transfer_core::Instruction::Transfer {
+                amount: balance,
+            })
+            .unwrap(),
             vec![
                 InputAccountIdentity::PrivateAuthorizedUpdate {
                     ssk: shared_secret,
@@ -2950,7 +3016,7 @@ pub mod tests {
             state.get_account_by_id(recipient_account_id),
             Account {
                 program_owner: program_id,
-                balance: 37,
+                balance,
                 nonce: Nonce(1),
                 ..Account::default()
             }
@@ -3216,7 +3282,7 @@ pub mod tests {
     /// This test ensures that even if a malicious program tries to perform overflow of balances
     /// it will not be able to break the balance validation.
     #[test]
-    fn malicious_program_cannot_break_balance_validation() {
+    fn malicious_program_cannot_break_balance_validation_if_not_in_genesis() {
         let sender_key = PrivateKey::try_new([37; 32]).unwrap();
         let sender_id = AccountId::from(&PublicKey::new_from_private_key(&sender_key));
         let sender_init_balance: u128 = 10;
@@ -3255,7 +3321,7 @@ pub mod tests {
 
         let witness_set = public_transaction::WitnessSet::for_message(&message, &[&sender_key]);
         let tx = PublicTransaction::new(message, witness_set);
-        let res = state.transition_from_public_transaction(&tx, 1, 0);
+        let res = state.transition_from_public_transaction(&tx, 2, 0);
         let expected_total_balance_pre_states = WrappedBalanceSum::from_balances(
             [sender_init_balance, recipient_init_balance].into_iter(),
         )
@@ -3311,13 +3377,12 @@ pub mod tests {
         let (shared_secret, epk) =
             SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0u8; 32], 0);
 
-        // Balance to initialize the account with (0 for a new account)
-        let balance: u128 = 0;
+        let instruction = authenticated_transfer_core::Instruction::Initialize;
 
         // Execute and prove the circuit with the authorized account but no commitment proof
         let (output, proof) = execute_and_prove(
             vec![authorized_account],
-            Program::serialize_instruction(balance).unwrap(),
+            Program::serialize_instruction(instruction).unwrap(),
             vec![InputAccountIdentity::PrivateAuthorizedInit {
                 ssk: shared_secret,
                 nsk: private_keys.nsk,
@@ -3412,12 +3477,12 @@ pub mod tests {
         let (shared_secret, epk) =
             SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0u8; 32], 0);
 
-        let balance: u128 = 0;
+        let instruction = authenticated_transfer_core::Instruction::Initialize;
 
         // Step 2: Execute claimer program to claim the account with authentication
         let (output, proof) = execute_and_prove(
             vec![authorized_account.clone()],
-            Program::serialize_instruction(balance).unwrap(),
+            Program::serialize_instruction(instruction).unwrap(),
             vec![InputAccountIdentity::PrivateAuthorizedInit {
                 ssk: shared_secret,
                 nsk: private_keys.nsk,

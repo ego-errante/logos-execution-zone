@@ -148,7 +148,7 @@ impl FfiBytes32 {
 
     /// Create from an `AccountId`.
     #[must_use]
-    pub const fn from_account_id(id: &nssa::AccountId) -> Self {
+    pub const fn from_account_id(id: nssa::AccountId) -> Self {
         Self { data: *id.value() }
     }
 }
@@ -185,8 +185,8 @@ impl From<FfiU128> for u128 {
     }
 }
 
-impl From<&nssa::AccountId> for FfiBytes32 {
-    fn from(id: &nssa::AccountId) -> Self {
+impl From<nssa::AccountId> for FfiBytes32 {
+    fn from(id: nssa::AccountId) -> Self {
         Self::from_account_id(id)
     }
 }

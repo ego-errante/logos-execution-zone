@@ -9,8 +9,9 @@ use crate::key_management::{
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(any(test, feature = "test_utils"), derive(PartialEq, Eq))]
 pub struct ChildKeysPrivate {
-    pub value: (KeyChain, Vec<(PrivateAccountKind, nssa::Account)>),
+    pub value: (KeyChain, BTreeMap<PrivateAccountKind, nssa::Account>),
     pub ccc: [u8; 32],
     /// Can be [`None`] if root.
     pub cci: Option<u32>,
@@ -47,7 +48,7 @@ impl ChildKeysPrivate {
                         viewing_secret_key: vsk,
                     },
                 },
-                vec![],
+                BTreeMap::from_iter([(PrivateAccountKind::Regular(0), nssa::Account::default())]),
             ),
             ccc,
             cci: None,
@@ -99,7 +100,7 @@ impl ChildKeysPrivate {
                         viewing_secret_key: vsk,
                     },
                 },
-                vec![],
+                BTreeMap::from_iter([(PrivateAccountKind::Regular(0), nssa::Account::default())]),
             ),
             ccc,
             cci: Some(cci),
@@ -120,8 +121,8 @@ impl KeyTreeNode for ChildKeysPrivate {
         let npk = self.value.0.nullifier_public_key;
         self.value
             .1
-            .iter()
-            .map(move |(kind, _)| nssa::AccountId::for_private_account(&npk, kind))
+            .keys()
+            .map(move |kind| nssa::AccountId::for_private_account(&npk, kind))
     }
 }
 

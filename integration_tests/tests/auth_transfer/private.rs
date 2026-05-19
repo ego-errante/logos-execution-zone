@@ -1,19 +1,23 @@
 use std::time::Duration;
 
 use anyhow::{Context as _, Result};
+use common::transaction::NSSATransaction;
 use integration_tests::{
-    TIME_TO_WAIT_FOR_BLOCK_SECONDS, TestContext, fetch_privacy_preserving_tx,
-    format_private_account_id, format_public_account_id, verify_commitment_is_in_state,
+    TIME_TO_WAIT_FOR_BLOCK_SECONDS, TestContext, fetch_privacy_preserving_tx, private_mention,
+    public_mention, verify_commitment_is_in_state,
 };
 use log::info;
 use nssa::{AccountId, program::Program};
 use nssa_core::{NullifierPublicKey, encryption::ViewingPublicKey};
 use sequencer_service_rpc::RpcClient as _;
 use tokio::test;
-use wallet::cli::{
-    Command, SubcommandReturnValue,
-    account::{AccountSubcommand, NewSubcommand},
-    programs::native_token_transfer::AuthTransferSubcommand,
+use wallet::{
+    account::Label,
+    cli::{
+        CliAccountMention, Command, SubcommandReturnValue,
+        account::{AccountSubcommand, NewSubcommand},
+        programs::native_token_transfer::AuthTransferSubcommand,
+    },
 };
 
 #[test]
@@ -24,10 +28,8 @@ async fn private_transfer_to_owned_account() -> Result<()> {
     let to: AccountId = ctx.existing_private_accounts()[1];
 
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
-        from: Some(format_private_account_id(from)),
-        from_label: None,
-        to: Some(format_private_account_id(to)),
-        to_label: None,
+        from: private_mention(from),
+        to: Some(private_mention(to)),
         to_npk: None,
         to_vpk: None,
         to_identifier: Some(0),
@@ -66,10 +68,8 @@ async fn private_transfer_to_foreign_account() -> Result<()> {
     let to_vpk = ViewingPublicKey::from_seed(&to_npk.0, &[0u8; 32]);
 
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
-        from: Some(format_private_account_id(from)),
-        from_label: None,
+        from: private_mention(from),
         to: None,
-        to_label: None,
         to_npk: Some(to_npk_string),
         to_vpk: Some(hex::encode(to_vpk.0)),
         to_identifier: Some(0),
@@ -117,10 +117,8 @@ async fn deshielded_transfer_to_public_account() -> Result<()> {
     assert_eq!(from_acc.balance, 10000);
 
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
-        from: Some(format_private_account_id(from)),
-        from_label: None,
-        to: Some(format_public_account_id(to)),
-        to_label: None,
+        from: private_mention(from),
+        to: Some(public_mention(to)),
         to_npk: None,
         to_vpk: None,
         to_identifier: Some(0),
@@ -173,22 +171,20 @@ async fn private_transfer_to_owned_account_using_claiming_path() -> Result<()> {
     };
 
     // Get the keys for the newly created account
-    let (to_keys, _, to_identifier) = ctx
+    let to = ctx
         .wallet()
         .storage()
-        .user_data
-        .get_private_account(to_account_id)
+        .key_chain()
+        .private_account(to_account_id)
         .context("Failed to get private account")?;
 
     // Send to this account using claiming path (using npk and vpk instead of account ID)
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
-        from: Some(format_private_account_id(from)),
-        from_label: None,
+        from: private_mention(from),
         to: None,
-        to_label: None,
-        to_npk: Some(hex::encode(to_keys.nullifier_public_key.0)),
-        to_vpk: Some(hex::encode(to_keys.viewing_public_key.0)),
-        to_identifier: Some(to_identifier),
+        to_npk: Some(hex::encode(to.key_chain.nullifier_public_key.0)),
+        to_vpk: Some(hex::encode(&to.key_chain.viewing_public_key.0)),
+        to_identifier: Some(to.kind.identifier()),
         amount: 100,
     });
 
@@ -233,10 +229,8 @@ async fn shielded_transfer_to_owned_private_account() -> Result<()> {
     let to: AccountId = ctx.existing_private_accounts()[1];
 
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
-        from: Some(format_public_account_id(from)),
-        from_label: None,
-        to: Some(format_private_account_id(to)),
-        to_label: None,
+        from: public_mention(from),
+        to: Some(private_mention(to)),
         to_npk: None,
         to_vpk: None,
         to_identifier: Some(0),
@@ -278,10 +272,8 @@ async fn shielded_transfer_to_foreign_account() -> Result<()> {
     let from: AccountId = ctx.existing_public_accounts()[0];
 
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
-        from: Some(format_public_account_id(from)),
-        from_label: None,
+        from: public_mention(from),
         to: None,
-        to_label: None,
         to_npk: Some(to_npk_string),
         to_vpk: Some(hex::encode(to_vpk.0)),
         to_identifier: Some(0),
@@ -341,22 +333,20 @@ async fn private_transfer_to_owned_account_continuous_run_path() -> Result<()> {
     };
 
     // Get the newly created account's keys
-    let (to_keys, _, to_identifier) = ctx
+    let to = ctx
         .wallet()
         .storage()
-        .user_data
-        .get_private_account(to_account_id)
+        .key_chain()
+        .private_account(to_account_id)
         .context("Failed to get private account")?;
 
     // Send transfer using nullifier and  viewing public keys
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
-        from: Some(format_private_account_id(from)),
-        from_label: None,
+        from: private_mention(from),
         to: None,
-        to_label: None,
-        to_npk: Some(hex::encode(to_keys.nullifier_public_key.0)),
-        to_vpk: Some(hex::encode(to_keys.viewing_public_key.0)),
-        to_identifier: Some(to_identifier),
+        to_npk: Some(hex::encode(to.key_chain.nullifier_public_key.0)),
+        to_vpk: Some(hex::encode(&to.key_chain.viewing_public_key.0)),
+        to_identifier: Some(to.kind.identifier()),
         amount: 100,
     });
 
@@ -402,8 +392,7 @@ async fn initialize_private_account() -> Result<()> {
     };
 
     let command = Command::AuthTransfer(AuthTransferSubcommand::Init {
-        account_id: Some(format_private_account_id(account_id)),
-        account_label: None,
+        account_id: private_mention(account_id),
     });
     wallet::cli::execute_subcommand(ctx.wallet_mut(), command).await?;
 
@@ -444,20 +433,17 @@ async fn private_transfer_using_from_label() -> Result<()> {
     let to: AccountId = ctx.existing_private_accounts()[1];
 
     // Assign a label to the sender account
-    let label = "private-sender-label".to_owned();
+    let label = Label::new("private-sender-label");
     let command = Command::Account(AccountSubcommand::Label {
-        account_id: Some(format_private_account_id(from)),
-        account_label: None,
+        account_id: private_mention(from),
         label: label.clone(),
     });
     wallet::cli::execute_subcommand(ctx.wallet_mut(), command).await?;
 
     // Send using the label instead of account ID
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
-        from: None,
-        from_label: Some(label),
-        to: Some(format_private_account_id(to)),
-        to_label: None,
+        from: CliAccountMention::Label(label),
+        to: Some(private_mention(to)),
         to_npk: None,
         to_vpk: None,
         to_identifier: Some(0),
@@ -491,7 +477,7 @@ async fn initialize_private_account_using_label() -> Result<()> {
     let mut ctx = TestContext::new().await?;
 
     // Create a new private account with a label
-    let label = "init-private-label".to_owned();
+    let label = Label::new("init-private-label");
     let command = Command::Account(AccountSubcommand::New(NewSubcommand::Private {
         cci: None,
         label: Some(label.clone()),
@@ -503,8 +489,7 @@ async fn initialize_private_account_using_label() -> Result<()> {
 
     // Initialize using the label instead of account ID
     let command = Command::AuthTransfer(AuthTransferSubcommand::Init {
-        account_id: None,
-        account_label: Some(label),
+        account_id: label.into(),
     });
     wallet::cli::execute_subcommand(ctx.wallet_mut(), command).await?;
 
@@ -541,15 +526,12 @@ async fn shielded_transfers_to_two_identifiers_same_npk() -> Result<()> {
     // Both transfers below will target this same node with distinct identifiers.
     let chain_index = ctx.wallet_mut().create_private_accounts_key(None);
     let (npk, vpk) = {
-        let node = ctx
+        let key_chain = ctx
             .wallet()
             .storage()
-            .user_data
-            .private_key_tree
-            .key_map
-            .get(&chain_index)
-            .expect("node was just inserted");
-        let key_chain = &node.value.0;
+            .key_chain()
+            .private_account_key_chain_by_index(&chain_index)
+            .expect("Failed to get private account key chain for chain index");
         (
             key_chain.nullifier_public_key,
             key_chain.viewing_public_key.clone(),
@@ -568,10 +550,8 @@ async fn shielded_transfers_to_two_identifiers_same_npk() -> Result<()> {
     wallet::cli::execute_subcommand(
         ctx.wallet_mut(),
         Command::AuthTransfer(AuthTransferSubcommand::Send {
-            from: Some(format_public_account_id(sender_0)),
-            from_label: None,
+            from: public_mention(sender_0),
             to: None,
-            to_label: None,
             to_npk: Some(npk_hex.clone()),
             to_vpk: Some(vpk_hex.clone()),
             to_identifier: Some(identifier_1),
@@ -583,10 +563,8 @@ async fn shielded_transfers_to_two_identifiers_same_npk() -> Result<()> {
     wallet::cli::execute_subcommand(
         ctx.wallet_mut(),
         Command::AuthTransfer(AuthTransferSubcommand::Send {
-            from: Some(format_public_account_id(sender_1)),
-            from_label: None,
+            from: public_mention(sender_1),
             to: None,
-            to_label: None,
             to_npk: Some(npk_hex),
             to_vpk: Some(vpk_hex),
             to_identifier: Some(identifier_2),
@@ -620,25 +598,156 @@ async fn shielded_transfers_to_two_identifiers_same_npk() -> Result<()> {
     assert_eq!(acc_2.balance, 200);
 
     // Both account ids must resolve to the same key node.
-    let tree = &ctx.wallet().storage().user_data.private_key_tree;
-    let ci_1 = tree
-        .account_id_map
-        .get(&account_id_1)
-        .context("account_id_1 missing from private_key_tree.account_id_map")?;
-    let ci_2 = tree
-        .account_id_map
-        .get(&account_id_2)
-        .context("account_id_2 missing from private_key_tree.account_id_map")?;
+    let found_acc1 = ctx
+        .wallet()
+        .storage()
+        .key_chain()
+        .private_account(account_id_1)
+        .context("account_id_1 not found in key chain")?;
+    let found_acc2 = ctx
+        .wallet()
+        .storage()
+        .key_chain()
+        .private_account(account_id_2)
+        .context("account_id_2 not found in key chain")?;
     assert_eq!(
-        ci_1, ci_2,
+        found_acc1.chain_index, found_acc2.chain_index,
         "identifiers 1 and 2 under the same NPK must share a single chain_index"
     );
     assert_eq!(
-        ci_1, &chain_index,
+        found_acc1.chain_index,
+        Some(chain_index),
         "both accounts must resolve to the key node created at the start of the test"
     );
 
     info!("Successfully transferred to two distinct identifiers under the same NPK");
+
+    Ok(())
+}
+
+#[test]
+async fn ppt_that_chain_calls_faucet_is_dropped() -> Result<()> {
+    use nssa::{
+        EphemeralPublicKey, SharedSecretKey, execute_and_prove,
+        privacy_preserving_transaction::{self, circuit::ProgramWithDependencies},
+    };
+    use nssa_core::{InputAccountIdentity, account::AccountWithMetadata};
+
+    let ctx = TestContext::new().await?;
+
+    let binary = std::fs::read(
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../artifacts/test_program_methods/faucet_chain_caller.bin"),
+    )?;
+    let deploy_tx = NSSATransaction::ProgramDeployment(nssa::ProgramDeploymentTransaction::new(
+        nssa::program_deployment_transaction::Message::new(binary.clone()),
+    ));
+    ctx.sequencer_client().send_transaction(deploy_tx).await?;
+
+    info!("Waiting for deploy block creation");
+    tokio::time::sleep(Duration::from_secs(TIME_TO_WAIT_FOR_BLOCK_SECONDS)).await;
+
+    let faucet_account_id = nssa::system_faucet_account_id();
+    let attacker_id = ctx.existing_public_accounts()[0];
+    let faucet_program_id = Program::faucet().id();
+    let vault_program_id = Program::vault().id();
+    let auth_transfer_program_id = Program::authenticated_transfer_program().id();
+    let nsk: nssa_core::NullifierSecretKey = [3; 32];
+    let npk = NullifierPublicKey::from(&nsk);
+    let vpk = Secp256k1Point::from_scalar([4; 32]);
+    let ssk = SharedSecretKey::new([55; 32], &vpk);
+    let epk = EphemeralPublicKey::from_scalar([55; 32]);
+    let attacker_vault_id = {
+        let seed = vault_core::compute_vault_seed(attacker_id);
+        AccountId::for_private_pda(&vault_program_id, &seed, &npk, 1337)
+    };
+    let amount: u128 = 1;
+
+    let faucet_pre = AccountWithMetadata::new(
+        ctx.sequencer_client()
+            .get_account(faucet_account_id)
+            .await?,
+        false,
+        faucet_account_id,
+    );
+    let vault_pda_pre = AccountWithMetadata::new(
+        ctx.sequencer_client()
+            .get_account(attacker_vault_id)
+            .await?,
+        false,
+        attacker_vault_id,
+    );
+
+    let faucet_chain_caller = Program::new(binary)?;
+    let program_with_deps = ProgramWithDependencies::new(
+        faucet_chain_caller,
+        [
+            (faucet_program_id, Program::faucet()),
+            (vault_program_id, Program::vault()),
+            (
+                auth_transfer_program_id,
+                Program::authenticated_transfer_program(),
+            ),
+        ]
+        .into(),
+    );
+
+    let instruction =
+        Program::serialize_instruction((faucet_program_id, vault_program_id, attacker_id, amount))?;
+
+    let (output, proof) = execute_and_prove(
+        vec![faucet_pre, vault_pda_pre],
+        instruction,
+        vec![
+            InputAccountIdentity::Public,
+            InputAccountIdentity::PrivatePdaInit {
+                npk,
+                ssk,
+                identifier: 1337,
+            },
+        ],
+        &program_with_deps,
+    )?;
+
+    let message = privacy_preserving_transaction::Message::try_from_circuit_output(
+        vec![faucet_account_id],
+        vec![],
+        vec![(npk, vpk, epk)],
+        output,
+    )?;
+    let witness_set = privacy_preserving_transaction::WitnessSet::for_message(&message, proof, &[]);
+    let attack_ppt = NSSATransaction::PrivacyPreserving(nssa::PrivacyPreservingTransaction::new(
+        message,
+        witness_set,
+    ));
+
+    let faucet_balance_before = ctx
+        .sequencer_client()
+        .get_account_balance(faucet_account_id)
+        .await?;
+    let vault_balance_before = ctx
+        .sequencer_client()
+        .get_account_balance(attacker_vault_id)
+        .await?;
+
+    let tx_hash = ctx.sequencer_client().send_transaction(attack_ppt).await?;
+
+    info!("Waiting for next block creation");
+    tokio::time::sleep(Duration::from_secs(TIME_TO_WAIT_FOR_BLOCK_SECONDS)).await;
+
+    let faucet_balance_after = ctx
+        .sequencer_client()
+        .get_account_balance(faucet_account_id)
+        .await?;
+    let vault_balance_after = ctx
+        .sequencer_client()
+        .get_account_balance(attacker_vault_id)
+        .await?;
+    let tx_on_chain = ctx.sequencer_client().get_transaction(tx_hash).await?;
+
+    assert_eq!(faucet_balance_after, faucet_balance_before);
+    assert_eq!(vault_balance_after, vault_balance_before);
+    assert!(tx_on_chain.is_none());
 
     Ok(())
 }

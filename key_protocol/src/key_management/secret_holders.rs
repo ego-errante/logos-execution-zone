@@ -15,7 +15,7 @@ pub struct SeedHolder {
 }
 
 /// Secret spending key object. Can produce `PrivateKeyHolder` objects.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SecretSpendingKey(pub [u8; 32]);
 /// Viewing secret key: the KEM seed split into its two 32-byte halves `d` and `r` (= z in
 /// FIPS 203), from which the ML-KEM 768 decapsulation key is derived deterministically.

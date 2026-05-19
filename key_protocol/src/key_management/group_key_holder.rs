@@ -54,7 +54,7 @@ pub type SealingSecretKey = ViewingSecretKey;
 /// `Debug` is implemented manually to redact the GMS; formatting this value with `{:?}`
 /// will not leak the secret. Code that formats through `{:#?}` on containing types is
 /// safe for the same reason.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GroupKeyHolder {
     gms: [u8; 32],
 }
@@ -402,7 +402,7 @@ mod tests {
         let recipient_vsk = recipient_keys.viewing_secret_key.clone();
 
         let sealed = holder.seal_for(&SealingPublicKey::from_bytes(recipient_vpk.0));
-        let restored = GroupKeyHolder::unseal(&sealed, &recipient_vsk).expect("unseal");
+        let restored = GroupKeyHolder::unseal(&sealed, recipient_vsk).expect("unseal");
 
         assert_eq!(restored.dangerous_raw_gms(), holder.dangerous_raw_gms());
 
@@ -433,7 +433,7 @@ mod tests {
             .clone();
 
         let sealed = holder.seal_for(&SealingPublicKey::from_bytes(recipient_vpk.0));
-        let result = GroupKeyHolder::unseal(&sealed, &wrong_vsk);
+        let result = GroupKeyHolder::unseal(&sealed, wrong_vsk);
         assert!(matches!(result, Err(super::SealError::DecryptionFailed)));
     }
 
@@ -452,7 +452,7 @@ mod tests {
         let last = sealed.len() - 1;
         sealed[last] ^= 0xFF;
 
-        let result = GroupKeyHolder::unseal(&sealed, &recipient_vsk);
+        let result = GroupKeyHolder::unseal(&sealed, recipient_vsk);
         assert!(matches!(result, Err(super::SealError::DecryptionFailed)));
     }
 
@@ -531,7 +531,7 @@ mod tests {
 
         let sealed = alice_holder.seal_for(&SealingPublicKey::from_bytes(bob_vpk.0));
         let bob_holder =
-            GroupKeyHolder::unseal(&sealed, &bob_vsk).expect("Bob should unseal the GMS");
+            GroupKeyHolder::unseal(&sealed, bob_vsk).expect("Bob should unseal the GMS");
 
         let bob_npk = bob_holder
             .derive_keys_for_pda(&TEST_PROGRAM_ID, &pda_seed)
