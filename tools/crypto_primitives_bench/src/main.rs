@@ -3,7 +3,7 @@
 //! Measures:
 //! - `KeyChain::new_os_random` (mnemonic → SSK → NSK/VSK + public keys)
 //! - `KeyChain::new_mnemonic` (same, but mnemonic exposed)
-//! - `SharedSecretKey::new` (Diffie-Hellman shared key derivation, the per-recipient cost)
+//! - `SharedSecretKey::encapsulate` (ML-KEM-768 encapsulation, the per-recipient cost)
 //! - `EncryptionScheme::encrypt` / `decrypt` (Account note encryption)
 //!
 //! Reports best-of-N wall time per operation. No live stack required.
@@ -24,10 +24,8 @@ use key_protocol::key_management::KeyChain;
 use nssa_core::{
     Commitment, EncryptionScheme, SharedSecretKey,
     account::{Account, AccountId},
-    encryption::{EphemeralPublicKey, EphemeralSecretKey},
     program::PrivateAccountKind,
 };
-use rand::{RngCore as _, rngs::OsRng};
 use serde::Serialize;
 
 const ITERS: usize = 100;
@@ -84,28 +82,19 @@ fn main() -> Result<()> {
         let (_kc, _mnemonic) = KeyChain::new_mnemonic("");
     }));
 
-    // SharedSecretKey: caller has ephemeral secret, recipient has VSK→VPK.
-    // We bench the SENDER side: derive ephemeral pubkey, then SharedSecretKey::new(scalar, point).
+    // SharedSecretKey: caller has recipient VPK; we bench the SENDER side —
+    // ML-KEM-768 encapsulation (replaces the old ECDH scalar multiplication).
     let recipient_kc = KeyChain::new_os_random();
     let vpk = recipient_kc.viewing_public_key;
-    results.push(time("SharedSecretKey::new (sender DH)", ITERS, || {
-        let mut bytes = [0_u8; 32];
-        OsRng.fill_bytes(&mut bytes);
-        let esk: EphemeralSecretKey = bytes;
-        let _epk = EphemeralPublicKey::from(&esk);
-        let _ssk = SharedSecretKey::new(esk, &vpk);
+    results.push(time("SharedSecretKey::encapsulate (sender KEM)", ITERS, || {
+        let (_ssk, _epk) = SharedSecretKey::encapsulate(&vpk);
     }));
 
     // EncryptionScheme::encrypt / decrypt over a small Account note.
     let account = Account::default();
     let account_id = AccountId::new([7; 32]);
     let commitment = Commitment::new(&account_id, &account);
-    let shared = {
-        let mut bytes = [0_u8; 32];
-        OsRng.fill_bytes(&mut bytes);
-        let esk: EphemeralSecretKey = bytes;
-        SharedSecretKey::new(esk, &vpk)
-    };
+    let (shared, _epk) = SharedSecretKey::encapsulate(&vpk);
     let kind = PrivateAccountKind::Regular(0_u128);
     let output_index: u32 = 0;
 

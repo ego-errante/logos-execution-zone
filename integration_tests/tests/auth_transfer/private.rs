@@ -65,7 +65,7 @@ async fn private_transfer_to_foreign_account() -> Result<()> {
     let from: AccountId = ctx.existing_private_accounts()[0];
     let to_npk = NullifierPublicKey([42; 32]);
     let to_npk_string = hex::encode(to_npk.0);
-    let to_vpk = ViewingPublicKey::from_seed(&to_npk.0, &[0u8; 32]);
+    let to_vpk = ViewingPublicKey::from_seed(&to_npk.0, &[0_u8; 32]);
 
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
         from: private_mention(from),
@@ -268,7 +268,7 @@ async fn shielded_transfer_to_foreign_account() -> Result<()> {
 
     let to_npk = NullifierPublicKey([42; 32]);
     let to_npk_string = hex::encode(to_npk.0);
-    let to_vpk = ViewingPublicKey::from_seed(&to_npk.0, &[0u8; 32]);
+    let to_vpk = ViewingPublicKey::from_seed(&to_npk.0, &[0_u8; 32]);
     let from: AccountId = ctx.existing_public_accounts()[0];
 
     let command = Command::AuthTransfer(AuthTransferSubcommand::Send {
@@ -654,9 +654,9 @@ async fn ppt_that_chain_calls_faucet_is_dropped() -> Result<()> {
     let auth_transfer_program_id = Program::authenticated_transfer_program().id();
     let nsk: nssa_core::NullifierSecretKey = [3; 32];
     let npk = NullifierPublicKey::from(&nsk);
-    let vpk = Secp256k1Point::from_scalar([4; 32]);
-    let ssk = SharedSecretKey::new([55; 32], &vpk);
-    let epk = EphemeralPublicKey::from_scalar([55; 32]);
+    let vpk = ViewingPublicKey(vec![4_u8; 1184]);
+    let ssk = SharedSecretKey([55_u8; 32]);
+    let epk = EphemeralPublicKey(vec![55_u8; 1088]);
     let attacker_vault_id = {
         let seed = vault_core::compute_vault_seed(attacker_id);
         AccountId::for_private_pda(&vault_program_id, &seed, &npk, 1337)

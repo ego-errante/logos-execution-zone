@@ -1345,7 +1345,7 @@ pub mod tests {
             AccountWithMetadata::new(Account::default(), false, (&recipient_keys.npk(), 0));
 
         let (shared_secret, epk) =
-            SharedSecretKey::encapsulate_deterministic(&recipient_keys.vpk(), &[0u8; 32], 0);
+            SharedSecretKey::encapsulate_deterministic(&recipient_keys.vpk(), &[0_u8; 32], 0);
 
         let (output, proof) = circuit::execute_and_prove(
             vec![sender, recipient],
@@ -1396,10 +1396,10 @@ pub mod tests {
             AccountWithMetadata::new(Account::default(), false, (&recipient_keys.npk(), 0));
 
         let (shared_secret_1, epk_1) =
-            SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0u8; 32], 0);
+            SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0_u8; 32], 0);
 
         let (shared_secret_2, epk_2) =
-            SharedSecretKey::encapsulate_deterministic(&recipient_keys.vpk(), &[0u8; 32], 1);
+            SharedSecretKey::encapsulate_deterministic(&recipient_keys.vpk(), &[0_u8; 32], 1);
 
         let (output, proof) = circuit::execute_and_prove(
             vec![sender_pre, recipient_pre],
@@ -1464,7 +1464,7 @@ pub mod tests {
         );
 
         let (shared_secret, epk) =
-            SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0u8; 32], 0);
+            SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0_u8; 32], 0);
 
         let (output, proof) = circuit::execute_and_prove(
             vec![sender_pre, recipient_pre],
@@ -1974,7 +1974,7 @@ pub mod tests {
                 InputAccountIdentity::PrivateAuthorizedUpdate {
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &sender_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -1986,7 +1986,7 @@ pub mod tests {
                     npk: recipient_keys.npk(),
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &recipient_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2030,7 +2030,7 @@ pub mod tests {
                 InputAccountIdentity::PrivateAuthorizedUpdate {
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &sender_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2042,7 +2042,7 @@ pub mod tests {
                     npk: recipient_keys.npk(),
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &recipient_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2086,7 +2086,7 @@ pub mod tests {
                 InputAccountIdentity::PrivateAuthorizedUpdate {
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &sender_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2098,7 +2098,7 @@ pub mod tests {
                     npk: recipient_keys.npk(),
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &recipient_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2142,7 +2142,7 @@ pub mod tests {
                 InputAccountIdentity::PrivateAuthorizedUpdate {
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &sender_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2154,7 +2154,7 @@ pub mod tests {
                     npk: recipient_keys.npk(),
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &recipient_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2198,7 +2198,7 @@ pub mod tests {
                 InputAccountIdentity::PrivateAuthorizedUpdate {
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &sender_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2210,7 +2210,7 @@ pub mod tests {
                     npk: recipient_keys.npk(),
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &recipient_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2252,7 +2252,7 @@ pub mod tests {
                 InputAccountIdentity::PrivateAuthorizedUpdate {
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &sender_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2264,7 +2264,7 @@ pub mod tests {
                     npk: recipient_keys.npk(),
                     ssk: SharedSecretKey::encapsulate_deterministic(
                         &recipient_keys.vpk(),
-                        &[0u8; 32],
+                        &[0_u8; 32],
                         0,
                     )
                     .0,
@@ -2287,7 +2287,7 @@ pub mod tests {
         let keys = test_private_account_keys_1();
         let npk = keys.npk();
         let shared_secret =
-            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0u8; 32], 0).0;
+            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0_u8; 32], 0).0;
         let public_account_1 = AccountWithMetadata::new(
             Account {
                 program_owner: program.id(),
@@ -2329,7 +2329,7 @@ pub mod tests {
         let npk = keys.npk();
         let seed = PdaSeed::new([42; 32]);
         let shared_secret =
-            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0u8; 32], 0).0;
+            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0_u8; 32], 0).0;
 
         let account_id = AccountId::for_private_pda(&program.id(), &seed, &npk, u128::MAX);
         let pre_state = AccountWithMetadata::new(Account::default(), false, account_id);
@@ -2366,7 +2366,7 @@ pub mod tests {
         let npk_b = keys_b.npk();
         let seed = PdaSeed::new([42; 32]);
         let shared_secret =
-            SharedSecretKey::encapsulate_deterministic(&keys_b.vpk(), &[0u8; 32], 0).0;
+            SharedSecretKey::encapsulate_deterministic(&keys_b.vpk(), &[0_u8; 32], 0).0;
 
         // `account_id` is derived from `npk_a`, but `npk_b` is supplied for this pre_state.
         // `AccountId::for_private_pda(program, seed, npk_b) != account_id`, so the claim check in
@@ -2401,7 +2401,7 @@ pub mod tests {
         let npk = keys.npk();
         let seed = PdaSeed::new([77; 32]);
         let shared_secret =
-            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0u8; 32], 0).0;
+            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0_u8; 32], 0).0;
 
         let account_id = AccountId::for_private_pda(&delegator.id(), &seed, &npk, u128::MAX);
         let pre_state = AccountWithMetadata::new(Account::default(), false, account_id);
@@ -2440,7 +2440,7 @@ pub mod tests {
         let claim_seed = PdaSeed::new([77; 32]);
         let wrong_delegated_seed = PdaSeed::new([88; 32]);
         let shared_secret =
-            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0u8; 32], 0).0;
+            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0_u8; 32], 0).0;
 
         let account_id = AccountId::for_private_pda(&delegator.id(), &claim_seed, &npk, u128::MAX);
         let pre_state = AccountWithMetadata::new(Account::default(), false, account_id);
@@ -2477,8 +2477,8 @@ pub mod tests {
         let keys_a = test_private_account_keys_1();
         let keys_b = test_private_account_keys_2();
         let seed = PdaSeed::new([55; 32]);
-        let shared_a = SharedSecretKey::encapsulate_deterministic(&keys_a.vpk(), &[0u8; 32], 0).0;
-        let shared_b = SharedSecretKey::encapsulate_deterministic(&keys_b.vpk(), &[0u8; 32], 0).0;
+        let shared_a = SharedSecretKey::encapsulate_deterministic(&keys_a.vpk(), &[0_u8; 32], 0).0;
+        let shared_b = SharedSecretKey::encapsulate_deterministic(&keys_b.vpk(), &[0_u8; 32], 0).0;
 
         let account_a = AccountId::for_private_pda(&program.id(), &seed, &keys_a.npk(), u128::MAX);
         let account_b = AccountId::for_private_pda(&program.id(), &seed, &keys_b.npk(), u128::MAX);
@@ -2524,7 +2524,7 @@ pub mod tests {
         let keys = test_private_account_keys_1();
         let npk = keys.npk();
         let shared_secret =
-            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0u8; 32], 0).0;
+            SharedSecretKey::encapsulate_deterministic(&keys.vpk(), &[0_u8; 32], 0).0;
         let seed = PdaSeed::new([99; 32]);
 
         // Simulate a previously-claimed private PDA: program_owner != DEFAULT, is_authorized =
@@ -2624,7 +2624,7 @@ pub mod tests {
         );
 
         let shared_secret =
-            SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0u8; 32], 0).0;
+            SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0_u8; 32], 0).0;
         let result = execute_and_prove(
             vec![private_account_1.clone(), private_account_1],
             Program::serialize_instruction(100_u128).unwrap(),
@@ -2969,7 +2969,7 @@ pub mod tests {
         let recipient_pre =
             AccountWithMetadata::new(Account::default(), true, recipient_account_id);
         let (shared_secret, epk) =
-            SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0u8; 32], 0);
+            SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0_u8; 32], 0);
 
         let balance = 37;
 
@@ -3074,10 +3074,10 @@ pub mod tests {
         );
 
         let (from_ss, from_epk) =
-            SharedSecretKey::encapsulate_deterministic(&from_keys.vpk(), &[0u8; 32], 0);
+            SharedSecretKey::encapsulate_deterministic(&from_keys.vpk(), &[0_u8; 32], 0);
 
         let (to_ss, to_epk) =
-            SharedSecretKey::encapsulate_deterministic(&to_keys.vpk(), &[0u8; 32], 1);
+            SharedSecretKey::encapsulate_deterministic(&to_keys.vpk(), &[0_u8; 32], 1);
 
         let mut dependencies = HashMap::new();
 
@@ -3375,7 +3375,7 @@ pub mod tests {
 
         // Set up parameters for the new account
         let (shared_secret, epk) =
-            SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0u8; 32], 0);
+            SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0_u8; 32], 0);
 
         let instruction = authenticated_transfer_core::Instruction::Initialize;
 
@@ -3426,7 +3426,7 @@ pub mod tests {
 
         let program = Program::claimer();
         let (shared_secret, epk) =
-            SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0u8; 32], 0);
+            SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0_u8; 32], 0);
 
         let (output, proof) = execute_and_prove(
             vec![unauthorized_account],
@@ -3475,7 +3475,7 @@ pub mod tests {
 
         // Set up parameters for claiming the new account
         let (shared_secret, epk) =
-            SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0u8; 32], 0);
+            SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0_u8; 32], 0);
 
         let instruction = authenticated_transfer_core::Instruction::Initialize;
 
@@ -3524,7 +3524,7 @@ pub mod tests {
 
         let noop_program = Program::noop();
         let shared_secret2 =
-            SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0u8; 32], 0).0;
+            SharedSecretKey::encapsulate_deterministic(&private_keys.vpk(), &[0_u8; 32], 0).0;
 
         // Step 3: Try to execute noop program with authentication but without initialization
         let res = execute_and_prove(
@@ -3608,7 +3608,7 @@ pub mod tests {
             vec![private_account],
             Program::serialize_instruction(instruction).unwrap(),
             vec![InputAccountIdentity::PrivateAuthorizedUpdate {
-                ssk: SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0u8; 32], 0)
+                ssk: SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0_u8; 32], 0)
                     .0,
                 nsk: sender_keys.nsk,
                 membership_proof: (0, vec![]),
@@ -3635,7 +3635,7 @@ pub mod tests {
             vec![private_account],
             Program::serialize_instruction(instruction).unwrap(),
             vec![InputAccountIdentity::PrivateAuthorizedUpdate {
-                ssk: SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0u8; 32], 0)
+                ssk: SharedSecretKey::encapsulate_deterministic(&sender_keys.vpk(), &[0_u8; 32], 0)
                     .0,
                 nsk: sender_keys.nsk,
                 membership_proof: (0, vec![]),
@@ -3683,7 +3683,7 @@ pub mod tests {
         let instruction = (balance_to_transfer, auth_transfers.id());
 
         let recipient =
-            SharedSecretKey::encapsulate_deterministic(&recipient_keys.vpk(), &[0u8; 32], 0).0;
+            SharedSecretKey::encapsulate_deterministic(&recipient_keys.vpk(), &[0_u8; 32], 0).0;
 
         let mut dependencies = HashMap::new();
         dependencies.insert(auth_transfers.id(), auth_transfers);
@@ -3840,7 +3840,7 @@ pub mod tests {
         let mut state = V03State::new_with_genesis_accounts(&[], vec![], 0).with_test_programs();
         let tx = {
             let (shared_secret, epk) =
-                SharedSecretKey::encapsulate_deterministic(&account_keys.vpk(), &[0u8; 32], 0);
+                SharedSecretKey::encapsulate_deterministic(&account_keys.vpk(), &[0_u8; 32], 0);
 
             let instruction = (
                 block_validity_window,
@@ -3909,7 +3909,7 @@ pub mod tests {
         let mut state = V03State::new_with_genesis_accounts(&[], vec![], 0).with_test_programs();
         let tx = {
             let (shared_secret, epk) =
-                SharedSecretKey::encapsulate_deterministic(&account_keys.vpk(), &[0u8; 32], 0);
+                SharedSecretKey::encapsulate_deterministic(&account_keys.vpk(), &[0_u8; 32], 0);
 
             let instruction = (
                 BlockValidityWindow::new_unbounded(),
@@ -4464,9 +4464,9 @@ pub mod tests {
         };
 
         let (alice_shared_0, alice_epk_0) =
-            SharedSecretKey::encapsulate_deterministic(&alice_keys.vpk(), &[0u8; 32], 0);
+            SharedSecretKey::encapsulate_deterministic(&alice_keys.vpk(), &[0_u8; 32], 0);
         let (alice_shared_1, alice_epk_1) =
-            SharedSecretKey::encapsulate_deterministic(&alice_keys.vpk(), &[0u8; 32], 1);
+            SharedSecretKey::encapsulate_deterministic(&alice_keys.vpk(), &[0_u8; 32], 1);
 
         // Fund alice_pda_0
         {
@@ -4576,7 +4576,7 @@ pub mod tests {
             let message = Message::try_from_circuit_output(
                 vec![recipient_id],
                 vec![Nonce(0)],
-                vec![(alice_npk, alice_keys.vpk(), alice_epk_0.clone())],
+                vec![(alice_npk, alice_keys.vpk(), alice_epk_0)],
                 output,
             )
             .unwrap();
@@ -4616,7 +4616,7 @@ pub mod tests {
             let message = Message::try_from_circuit_output(
                 vec![recipient_id],
                 vec![],
-                vec![(alice_npk, alice_keys.vpk(), alice_epk_1.clone())],
+                vec![(alice_npk, alice_keys.vpk(), alice_epk_1)],
                 output,
             )
             .unwrap();

@@ -414,7 +414,7 @@ mod tests {
         let acc = PrivacyPreservingAccount::PrivateShared {
             nsk: [0; 32],
             npk: NullifierPublicKey([1; 32]),
-            vpk: ViewingPublicKey::from_seed(&[2u8; 32], &[3u8; 32]),
+            vpk: ViewingPublicKey::from_seed(&[2_u8; 32], &[3_u8; 32]),
             identifier: 42,
         };
         assert!(acc.is_private());
