@@ -86,9 +86,13 @@ fn main() -> Result<()> {
     // ML-KEM-768 encapsulation (replaces the old ECDH scalar multiplication).
     let recipient_kc = KeyChain::new_os_random();
     let vpk = recipient_kc.viewing_public_key;
-    results.push(time("SharedSecretKey::encapsulate (sender KEM)", ITERS, || {
-        let (_ssk, _epk) = SharedSecretKey::encapsulate(&vpk);
-    }));
+    results.push(time(
+        "SharedSecretKey::encapsulate (sender KEM)",
+        ITERS,
+        || {
+            let (_ssk, _epk) = SharedSecretKey::encapsulate(&vpk);
+        },
+    ));
 
     // EncryptionScheme::encrypt / decrypt over a small Account note.
     let account = Account::default();

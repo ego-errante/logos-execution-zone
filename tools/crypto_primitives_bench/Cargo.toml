@@ -15,4 +15,3 @@ nssa_core = { workspace = true, features = ["host"] }
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-rand = { workspace = true }
