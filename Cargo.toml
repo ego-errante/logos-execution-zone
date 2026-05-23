@@ -40,6 +40,8 @@ members = [
   "examples/program_deployment",
   "examples/program_deployment/methods",
   "examples/program_deployment/methods/guest",
+  "examples/fixed-supply",
+  "examples/variable-supply",
   "testnet_initial_state",
   "indexer/ffi",
 ]

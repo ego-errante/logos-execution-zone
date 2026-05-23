@@ -5,10 +5,14 @@
 # Walks through the additive Token program surface added by this submission:
 #   - NewFungibleDefinitionWithAuthority — define a Token with a soft-pointer mint authority
 #   - MintWithAuthority                  — mint gated by a separate authority account
+#   - RotateAuthority                    — transfer the mint authority to a new account
+#   - RevokeAuthority                    — renounce the mint authority (terminal)
 #
 # The demo starts a self-contained standalone sequencer, deploys a Token program
 # built from this checkout, creates the four required accounts, and exercises the
-# authority-gated mint end-to-end.
+# authority-gated mint end-to-end. Expected final balance on demo-hold is 1500
+# (1000 minted by the original authority + 500 minted after rotation; a final
+# post-revoke mint of 999 is rejected and does NOT contribute to the balance).
 #
 # Prerequisites (one-time host setup, NOT done by this script):
 #   - Rust + Cargo
@@ -194,6 +198,43 @@ step "Mint 1000 units via the authority"
     --holder-account-id "$HOLD_ID" \
     --authority-account-id "$AUTH_ID" \
     --amount 1000 2>&1 | tee -a "$DEMO_LOG"
+
+step "Create second authority account for rotation"
+NEW_AUTH_ID=$("$WALLET_BIN" account new public --label demo-auth2 2>&1 | tee -a "$DEMO_LOG" | extract_account_id)
+log "new authority: $NEW_AUTH_ID"
+
+step "Rotate mint authority to demo-auth2"
+"$WALLET_BIN" token rotate-authority \
+    --definition-account-id "$DEF_ID" \
+    --authority-account-id "$AUTH_ID" \
+    --new-admin "$NEW_AUTH_ID" 2>&1 | tee -a "$DEMO_LOG"
+sleep 20
+
+step "Mint 500 more via the new authority"
+"$WALLET_BIN" token mint-with-authority \
+    --definition-account-id "$DEF_ID" \
+    --holder-account-id "$HOLD_ID" \
+    --authority-account-id "$NEW_AUTH_ID" \
+    --amount 500 2>&1 | tee -a "$DEMO_LOG"
+sleep 20
+
+step "Revoke mint authority"
+"$WALLET_BIN" token revoke-authority \
+    --definition-account-id "$DEF_ID" \
+    --authority-account-id "$NEW_AUTH_ID" 2>&1 | tee -a "$DEMO_LOG"
+sleep 20
+
+step "Demonstrate post-revoke mint is rejected"
+# Expect this to fail with ApprovalError::Renounced (in the sequencer log).
+# Wallet CLI may exit 0 if the tx is accepted into mempool — the rejection
+# surfaces at block-validation time. Either way, the balance assertion below
+# is the real check (should still be 1500, not 1500 + N).
+"$WALLET_BIN" token mint-with-authority \
+    --definition-account-id "$DEF_ID" \
+    --holder-account-id "$HOLD_ID" \
+    --authority-account-id "$NEW_AUTH_ID" \
+    --amount 999 2>&1 | tee -a "$DEMO_LOG" || log "  expected: wallet rejected"
+sleep 20
 
 step "Wait for sequencer to produce a block"
 # Sequencer config sets block_create_timeout to 15s. Until a block lands,

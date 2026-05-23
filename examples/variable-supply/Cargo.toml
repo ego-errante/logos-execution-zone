@@ -1,0 +1,23 @@
+[package]
+name = "variable-supply"
+version = "0.1.0"
+edition = "2024"
+license = { workspace = true }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "variable-supply"
+path = "src/bin/main.rs"
+
+[dependencies]
+common.workspace = true
+nssa.workspace = true
+nssa_core.workspace = true
+sequencer_service_rpc = { workspace = true, features = ["client"] }
+token_core.workspace = true
+wallet.workspace = true
+
+anyhow.workspace = true
+tokio = { workspace = true, features = ["macros"] }
