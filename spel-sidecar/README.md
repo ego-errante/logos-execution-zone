@@ -1,4 +1,4 @@
-# `spel-spike` — sidecar for SPEL IDL emission
+# `spel-sidecar` — sidecar for SPEL IDL emission
 
 This directory exists for **one purpose**: hold a SPEL-shape mirror of the LP-0013 Token program so that `artifacts/token.idl.spel.json` can be produced by the real `spel generate-idl` toolchain rather than hand-authored.
 
@@ -9,7 +9,7 @@ The sidecar's source file is **not** compiled by anything in the main build. `sp
 ## Layout
 
 ```
-spel-spike/
+spel-sidecar/
 ├── Cargo.toml                              # [workspace] + isolated package; never built
 ├── README.md                                # this file
 └── methods/
@@ -19,7 +19,7 @@ spel-spike/
                 └── token.rs                 # SPEL mirror of the Token program
 ```
 
-The `methods/guest/src/bin/` path is the SPEL CLI's default discovery location, so `spel generate-idl spel-spike` finds the source automatically.
+The `methods/guest/src/bin/` path is the SPEL CLI's default discovery location, so `spel generate-idl spel-sidecar` finds the source automatically.
 
 ## Regenerating the IDL
 
@@ -32,7 +32,7 @@ cargo install --git https://github.com/logos-co/spel --tag v0.4.0 spel
 From the repo root:
 
 ```bash
-spel -- generate-idl spel-spike > artifacts/token.idl.spel.json
+spel -- generate-idl spel-sidecar > artifacts/token.idl.spel.json
 ```
 
 The output is committed at `artifacts/token.idl.spel.json` (10 KB, 11 instructions, 6 account types).

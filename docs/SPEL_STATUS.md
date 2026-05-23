@@ -21,7 +21,7 @@ The structural fix — upgrade the entire workspace to `nssa_core v0.2.0-rc3` �
 
 ## The sidecar approach
 
-`spel-spike/` is an isolated Cargo package outside the main workspace (note the empty `[workspace]` table at `spel-spike/Cargo.toml`). It hosts a SPEL-shape mirror of the Token program at `spel-spike/methods/guest/src/bin/token.rs`. The `spel generate-idl` CLI is invoked against the sidecar; the emitted IDL is committed at `artifacts/token.idl.spel.json`.
+`spel-sidecar/` is an isolated Cargo package outside the main workspace (note the empty `[workspace]` table at `spel-sidecar/Cargo.toml`). It hosts a SPEL-shape mirror of the Token program at `spel-sidecar/methods/guest/src/bin/token.rs`. The `spel generate-idl` CLI is invoked against the sidecar; the emitted IDL is committed at `artifacts/token.idl.spel.json`.
 
 Crucially, **the sidecar source is never compiled** by the main build or the SPEL CLI. `spel generate-idl` does syntax-level parsing only (it reads function signatures and `#[account(...)]` attributes via `syn`). The Cargo.toml exists only so the directory is a self-documenting unit and a future contributor could try compiling it if SPEL's workspace-integration story improves.
 
@@ -29,7 +29,7 @@ This is the same workaround taken by the prior community submission ([PR #57](ht
 
 ## Scaffold ↔ real program mapping
 
-| Real program (`programs/token/`) | Sidecar mirror (`spel-spike/methods/guest/src/bin/token.rs`) |
+| Real program (`programs/token/`) | Sidecar mirror (`spel-sidecar/methods/guest/src/bin/token.rs`) |
 |---|---|
 | `Instruction::Transfer` | `pub fn transfer(...)` |
 | `Instruction::NewFungibleDefinition` | `pub fn new_fungible_definition(...)` |
@@ -68,7 +68,7 @@ cargo install --git https://github.com/logos-co/spel --tag v0.4.0 spel
 Regenerate the IDL from the repo root:
 
 ```bash
-spel -- generate-idl spel-spike > artifacts/token.idl.spel.json
+spel -- generate-idl spel-sidecar > artifacts/token.idl.spel.json
 ```
 
 Both files (`artifacts/token.idl.spel.json` and `artifacts/token.idl.json`) are committed and reviewed together.

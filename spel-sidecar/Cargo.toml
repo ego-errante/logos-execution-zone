@@ -10,7 +10,7 @@
 [workspace]
 
 [package]
-name = "token-spel-spike"
+name = "token-spel-sidecar"
 version = "0.0.0"
 edition = "2021"
 publish = false

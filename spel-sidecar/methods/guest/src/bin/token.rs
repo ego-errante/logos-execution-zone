@@ -1,7 +1,7 @@
 //! SPEL-shape mirror of the LP-0013 Token program.
 //!
 //! This file is the source of provenance for `artifacts/token.idl.spel.json`,
-//! emitted by `spel generate-idl` (see `spel-spike/README.md` for the exact
+//! emitted by `spel generate-idl` (see `spel-sidecar/README.md` for the exact
 //! invocation and `docs/SPEL_STATUS.md` for why a sidecar exists).
 //!
 //! Handler bodies are intentionally minimal — `spel generate-idl` only parses
