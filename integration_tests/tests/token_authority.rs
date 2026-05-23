@@ -1,7 +1,8 @@
-//! Integration tests for the LP-0013 mint-authority lifecycle:
-//! `NewFungibleDefinitionWithAuthority` + `MintWithAuthority` + `RotateAuthority`
-//! + `RevokeAuthority`, exercised end-to-end through the wallet facade against a
-//! sequencer spun up by [`TestContext`].
+//! Integration tests for the LP-0013 mint-authority lifecycle.
+//!
+//! Covers `NewFungibleDefinitionWithAuthority` + `MintWithAuthority` +
+//! `RotateAuthority` + `RevokeAuthority`, exercised end-to-end through the
+//! wallet facade against a sequencer spun up by [`TestContext`].
 //!
 //! The wallet facade submits transactions and returns a tx hash on successful
 //! submission; on-chain rejection (e.g. an `ApprovalError::Unauthorized` /
@@ -14,6 +15,7 @@
 #![expect(
     clippy::shadow_unrelated,
     clippy::tests_outside_test_module,
+    clippy::let_underscore_must_use,
     reason = "We don't care about these in tests"
 )]
 
@@ -66,7 +68,7 @@ async fn read_balance(ctx: &TestContext, holder_id: AccountId) -> Result<u128> {
     }
     let holding = TokenHolding::try_from(&acc.data)?;
     let TokenHolding::Fungible { balance, .. } = holding else {
-        anyhow::bail!("expected fungible holding, got {:?}", holding);
+        anyhow::bail!("expected fungible holding, got {holding:?}");
     };
     Ok(balance)
 }

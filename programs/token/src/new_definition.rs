@@ -56,10 +56,7 @@ pub fn new_fungible_definition_with_authority(
     total_supply: u128,
     mint_authority: Option<nssa_core::account::AccountId>,
 ) -> Vec<AccountPostState> {
-    let authority = match mint_authority {
-        Some(admin) => Authority::new(admin),
-        None => Authority::renounced(),
-    };
+    let authority = mint_authority.map_or_else(Authority::renounced, Authority::new);
     assert_eq!(
         definition_target_account.account,
         Account::default(),

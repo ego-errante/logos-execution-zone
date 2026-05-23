@@ -8,7 +8,7 @@
 //! initial `mint_authority` as an arg.
 
 use nssa_core::{
-    account::{AccountWithMetadata, Data, AccountId},
+    account::{AccountId, AccountWithMetadata, Data},
     program::AccountPostState,
 };
 use token_core::TokenDefinition;

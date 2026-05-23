@@ -5,22 +5,23 @@
 //!
 //!   1. Define a fungible token with an initial mint authority (`auth_a`).
 //!   2. `auth_a` mints 1000 to `holder_a`.
-//!   3. Rotate the authority from `auth_a` to `auth_b` (e.g. multisig handoff,
-//!      DAO governance transition, key rotation).
+//!   3. Rotate the authority from `auth_a` to `auth_b` (e.g. multisig handoff, DAO governance
+//!      transition, key rotation).
 //!   4. `auth_b` mints 500 to `holder_b`.
-//!   5. Attempt a mint via `auth_a` again — must fail (the gate now checks
-//!      against `auth_b`'s id).
+//!   5. Attempt a mint via `auth_a` again — must fail (the gate now checks against `auth_b`'s id).
 //!   6. Print both holders' final balances (1000 and 500).
 //!
 //! Prerequisites (NOT done by this example):
-//!   - A standalone sequencer running at `127.0.0.1:3040` with the token program
-//!     deployed. The simplest way is to run `./demo.sh --keep-state` once and
-//!     then leave the sequencer process running (the trap in demo.sh kills it
-//!     on exit — either remove the trap or start the sequencer separately).
+//!   - A standalone sequencer running at `127.0.0.1:3040` with the token program deployed. The
+//!     simplest way is to run `./demo.sh --keep-state` once and then leave the sequencer process
+//!     running (the trap in demo.sh kills it on exit — either remove the trap or start the
+//!     sequencer separately).
 //!   - The wallet has storage initialized at `$NSSA_WALLET_HOME_DIR`.
 //!
 //! Run with:
-//!   cargo run --release -p variable-supply
+//!   `cargo run --release -p variable-supply`.
+
+#![expect(clippy::print_stdout, reason = "example bin writes to stdout")]
 
 use std::time::Duration;
 
@@ -107,7 +108,7 @@ async fn main() -> Result<()> {
     // guest panics with ApprovalError::Unauthorized, the sequencer rejects the tx
     // and the JSON-RPC error surfaces as ExecutionFailureKind::SequencerClientError.
     // So no catch_unwind is needed — the rejection is a plain Err.
-    println!("\nAttempting mint via auth_a (expected to fail — auth_a no longer authorized)");
+    println!("\nAttempting mint via auth_a (expected to fail - auth_a no longer authorized)");
     match Token(&wallet_core)
         .send_mint_with_authority(def_id, holder_a_id, auth_a_id, 1)
         .await
@@ -130,10 +131,7 @@ async fn main() -> Result<()> {
     println!("  holder_a: {bal_a}");
     println!("  holder_b: {bal_b}");
     assert_eq!(bal_a, 1000, "auth_a's pre-rotation mint should have landed");
-    assert_eq!(
-        bal_b, 500,
-        "auth_b's post-rotation mint should have landed"
-    );
+    assert_eq!(bal_b, 500, "auth_b's post-rotation mint should have landed");
 
     println!("\nvariable-supply example complete.");
     Ok(())
@@ -152,6 +150,8 @@ async fn read_fungible_balance(wallet_core: &WalletCore, holder_id: AccountId) -
         TokenHolding::try_from(&acc.data).context("holder account data is not a TokenHolding")?;
     match holding {
         TokenHolding::Fungible { balance, .. } => Ok(balance),
-        other => anyhow::bail!("expected Fungible holding, got {other:?}"),
+        other @ (TokenHolding::NftMaster { .. } | TokenHolding::NftPrintedCopy { .. }) => {
+            anyhow::bail!("expected Fungible holding, got {other:?}")
+        }
     }
 }

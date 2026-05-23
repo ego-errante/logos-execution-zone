@@ -1175,8 +1175,8 @@ fn revoke_authority_makes_subsequent_mint_fail() {
         account_id: definition_id,
     };
 
-    // 3) Holding account starts uninitialized; the admin signer would still
-    //    like to mint — should panic with `Renounced`.
+    // 3) Holding account starts uninitialized; the admin signer would still like to mint — should
+    //    panic with `Renounced`.
     let holding = AccountWithMetadata {
         account: Account::default(),
         is_authorized: true,

@@ -1,13 +1,12 @@
 //! This crate contains core data structures and utilities for the Token Program.
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use nssa_core::account::{AccountId, Data};
-use serde::{Deserialize, Serialize};
-
 // Re-export the approval primitives so downstream Token program callers don't
 // need to depend on `lez-approval` directly to construct/inspect authorities or
 // match on the panic-payload error variants.
 pub use lez_approval::{ApprovalError, Authority};
+use nssa_core::account::{AccountId, Data};
+use serde::{Deserialize, Serialize};
 
 /// Token Program Instruction.
 #[derive(Serialize, Deserialize)]
@@ -84,8 +83,8 @@ pub enum Instruction {
     /// Required accounts (order matters):
     /// - Token Definition account (initialized, any authorization),
     /// - Token Holding account (uninitialized or authorized and initialized),
-    /// - Mint Authority account (must be authorized; its id must equal the
-    ///   active admin in the `authority` field on the Token Definition).
+    /// - Mint Authority account (must be authorized; its id must equal the active admin in the
+    ///   `authority` field on the Token Definition).
     MintWithAuthority { amount_to_mint: u128 },
 
     /// Print a new NFT from the master copy.
@@ -106,8 +105,8 @@ pub enum Instruction {
     ///
     /// Required accounts (order matters):
     /// - Token Definition account (initialized, any authorization),
-    /// - Current Authority account (must be authorized; its id must equal the
-    ///   active admin in the `authority` field on the Token Definition).
+    /// - Current Authority account (must be authorized; its id must equal the active admin in the
+    ///   `authority` field on the Token Definition).
     RotateAuthority { new_admin: AccountId },
 
     /// Terminally renounce the recorded authority on a Token Definition
@@ -117,8 +116,8 @@ pub enum Instruction {
     ///
     /// Required accounts (order matters):
     /// - Token Definition account (initialized, any authorization),
-    /// - Current Authority account (must be authorized; its id must equal the
-    ///   active admin in the `authority` field on the Token Definition).
+    /// - Current Authority account (must be authorized; its id must equal the active admin in the
+    ///   `authority` field on the Token Definition).
     RevokeAuthority,
 }
 

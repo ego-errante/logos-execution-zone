@@ -3,25 +3,26 @@
 //! Demonstrates the canonical "stablecoin / capped-supply asset" pattern enabled by
 //! `lez-approval` + the Token program's `RevokeAuthority` instruction:
 //!
-//!   1. Define a fungible token whose initial supply is minted up-front to a
-//!      named authority.
+//!   1. Define a fungible token whose initial supply is minted up-front to a named authority.
 //!   2. Mint the full pre-allocated supply to a holder via that authority.
 //!   3. Terminally revoke the authority — supply is now permanently fixed.
-//!   4. Attempt one more mint and observe the sequencer reject it (the guest
-//!      panics with `ApprovalError::Renounced`, which surfaces as a
-//!      `SequencerClientError` on the wallet facade).
+//!   4. Attempt one more mint and observe the sequencer reject it (the guest panics with
+//!      `ApprovalError::Renounced`, which surfaces as a `SequencerClientError` on the wallet
+//!      facade).
 //!   5. Print the holder's final balance (1000).
 //!
 //! Prerequisites (NOT done by this example):
-//!   - A standalone sequencer running at `127.0.0.1:3040` with the token program
-//!     deployed. The simplest way is to run `./demo.sh --keep-state` once and
-//!     then leave the sequencer process running (the trap in demo.sh kills it
-//!     on exit — either remove the trap or start the sequencer separately).
-//!   - The wallet has storage initialized at `$NSSA_WALLET_HOME_DIR` (defaults
-//!     to `wallet/configs/debug` when invoked via `demo.sh`).
+//!   - A standalone sequencer running at `127.0.0.1:3040` with the token program deployed. The
+//!     simplest way is to run `./demo.sh --keep-state` once and then leave the sequencer process
+//!     running (the trap in demo.sh kills it on exit — either remove the trap or start the
+//!     sequencer separately).
+//!   - The wallet has storage initialized at `$NSSA_WALLET_HOME_DIR` (defaults to
+//!     `wallet/configs/debug` when invoked via `demo.sh`).
 //!
 //! Run with:
-//!   cargo run --release -p fixed-supply
+//!   `cargo run --release -p fixed-supply`.
+
+#![expect(clippy::print_stdout, reason = "example bin writes to stdout")]
 
 use std::time::Duration;
 
@@ -84,7 +85,7 @@ async fn main() -> Result<()> {
     tokio::time::sleep(BLOCK_WAIT).await;
 
     // --- 4. Revoke the authority. Supply is now permanently fixed at 1000.
-    println!("\nRevoking mint authority (terminal — supply is now fixed)");
+    println!("\nRevoking mint authority (terminal - supply is now fixed)");
     Token(&wallet_core)
         .send_revoke_authority(def_id, auth_id)
         .await
@@ -141,6 +142,8 @@ async fn read_fungible_balance(wallet_core: &WalletCore, holder_id: AccountId) -
         TokenHolding::try_from(&acc.data).context("holder account data is not a TokenHolding")?;
     match holding {
         TokenHolding::Fungible { balance, .. } => Ok(balance),
-        other => anyhow::bail!("expected Fungible holding, got {other:?}"),
+        other @ (TokenHolding::NftMaster { .. } | TokenHolding::NftPrintedCopy { .. }) => {
+            anyhow::bail!("expected Fungible holding, got {other:?}")
+        }
     }
 }

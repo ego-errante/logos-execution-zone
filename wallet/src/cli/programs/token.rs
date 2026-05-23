@@ -492,11 +492,7 @@ impl WalletSubcommand for TokenProgramAgnosticSubcommand {
                 new_admin,
             } => {
                 Token(wallet_core)
-                    .send_rotate_authority(
-                        definition_account_id,
-                        authority_account_id,
-                        new_admin,
-                    )
+                    .send_rotate_authority(definition_account_id, authority_account_id, new_admin)
                     .await?;
                 Ok(SubcommandReturnValue::Empty)
             }

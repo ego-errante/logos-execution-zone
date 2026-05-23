@@ -59,8 +59,8 @@ impl Authority {
     ///
     /// # Panics
     /// - With [`ApprovalError::Renounced`] if the authority is `None`.
-    /// - With [`ApprovalError::Unauthorized`] if the signer's `account_id`
-    ///   does not match the admin, or `is_authorized` is `false`.
+    /// - With [`ApprovalError::Unauthorized`] if the signer's `account_id` does not match the
+    ///   admin, or `is_authorized` is `false`.
     pub fn gate(&self, signer: &AccountWithMetadata) {
         let Some(admin) = self.0 else {
             panic!("{}", ApprovalError::Renounced);
@@ -95,8 +95,9 @@ impl Authority {
 
 #[cfg(test)]
 mod tests {
-    use super::{ApprovalError, Authority};
     use nssa_core::account::{Account, AccountId, AccountWithMetadata};
+
+    use super::{ApprovalError, Authority};
 
     fn aid(byte: u8) -> AccountId {
         AccountId::new([byte; 32])
