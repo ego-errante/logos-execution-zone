@@ -72,3 +72,49 @@ spel -- generate-idl spel-sidecar > artifacts/token.idl.spel.json
 ```
 
 Both files (`artifacts/token.idl.spel.json` and `artifacts/token.idl.json`) are committed and reviewed together.
+
+## What surprised us during the sidecar build
+
+Honest engineering accounting — paper cuts and recalibrations encountered while implementing the sidecar, in case any are useful to a reviewer or to the next builder hitting the same wall.
+
+### 1. The SPEL CLI installed cleanly on macOS arm64
+
+We expected `cargo install --git https://github.com/logos-co/spel --tag v0.4.0 spel` to fail. The spel CLI depends on `nssa_core v0.2.0-rc3` with `features = ["host"]`, which transitively pulls in `ring` → `cc-rs` — the same chain that breaks our riscv32 guest build.
+
+It installed in ~3 minutes, exit 0.
+
+The recalibration: `cc-rs` fails on `riscv32im-risc0-zkvm-elf` because that's a cross-compile target with no native C toolchain that understands macOS arm64 host flags (`-arch arm64`, `-mmacosx-version-min`). For a *native* host build, `cc-rs` does exactly what it's designed to do — pick the host compiler with host flags. `ring` builds natively on arm64-darwin all the time. The failure mode is target-specific, not crate-specific. We had been thinking "ring is in the dep tree → ring fails," not "ring + cross-compile-to-riscv32 → ring fails." This is why the Reproducibility section above flags "host-only build, no riscv32 target required" as a meaningful caveat.
+
+### 2. `#[account]` without parens isn't supported in v0.4.0
+
+Rust attribute grammar allows both `#[attr]` and `#[attr(...)]`. We expected bare `#[account]` to be the shorthand for "default account, no constraints," which we needed for `initialize_account`, `burn`, and `mint_with_authority` where the first account is a read-only definition with no `mut` / `signer` / `init` annotations. First run failed with:
+
+```
+Error: Parse error: expected attribute arguments in parentheses: #[account(...)]
+```
+
+SPEL's attribute parser uses `syn::Attribute::parse_args` (or equivalent), which assumes the `(...)` is there — no "no args" branch. Fix: write `#[account()]` with empty parens. Cosmetically ugly, valid Rust, 4-character diff per occurrence.
+
+### 3. Workspace-walk warning when the source file sits outside SPEL's expected layout
+
+First invocation as `spel -- generate-idl spel-sidecar/src/lib.rs` emitted:
+
+```
+⚠️  workspace at '' has no matching member for 'spel-sidecar/src/lib.rs'; searching all subdirectories
+```
+
+The CLI walks up from the input file looking for a `Cargo.toml` and tries to verify the input belongs to a workspace member crate — not for compilation, but so it can scan path deps for `#[account_type]` declarations. With `spel-sidecar/Cargo.toml` declaring `[workspace]` (empty), the workspace member list is empty, the input file isn't in it, and the CLI falls back to subdirectory scanning. Cosmetic warning, correct output.
+
+Fix: move source to `spel-sidecar/methods/guest/src/bin/token.rs` — the SPEL-idiomatic discovery path — and invoke as `spel -- generate-idl spel-sidecar` (directory, not file). Now matches the layout the SPEL README documents as canonical. This was a "your fault for not matching the convention" surprise rather than a SPEL bug.
+
+### 4. v0.4.0 doesn't emit a top-level `errors` table
+
+The `SpelIdl` schema in `spel-framework-core/src/idl.rs` has fields for `version`, `name`, `spec`, `metadata`, `instructions`, `accounts`, `types`, `errors`, `instruction_type`. The hand-authored canonical IDL fills all 9. The v0.4.0 CLI emits only `version`, `name`, `instructions`, `accounts`. No `errors`, no `types` as a separate field (types are inlined into account variants), no `spec`, no `metadata`, no `instruction_type`.
+
+Specifically: the `errors` table — which would list `ApprovalError::{Unauthorized, Renounced}` with their codes — is absent. The schema field exists in `SpelIdl`; the macro/CLI just doesn't have a collection pass that walks the source for error-enum declarations. Schema is forward-declared; emitter hasn't caught up.
+
+This is why the two-IDL strategy isn't only a workaround for the workspace-integration blockers — even if we'd successfully integrated SPEL directly into the workspace, we'd still need the hand-authored IDL to cover the `errors` table. The dep-graph collision forced us into the pattern; the schema gap means the pattern was the right shape anyway.
+
+### Headline lesson
+
+The two stacked blockers documented above (`nssa_core` collision + `ring`/`cc-rs` cross-compile) are real and both still apply to workspace-integrated SPEL. The sidecar approach side-steps both, but it does so by *not testing them* — the sidecar never compiles, never cross-compiles, never integrates. We did not solve the original problems; we routed around them, and the routing turned out to be both cheap and well-precedented (PR #57). This document exists so reviewers can see the routing for what it is rather than infer it.
