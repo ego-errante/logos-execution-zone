@@ -239,27 +239,166 @@ If you're going to build sequencer image locally you should better adjust defaul
 
 ---
 
-## LP-0013 — Token program: authorities
+## LP-0013 — Token program: rotatable mint authority
 
-This fork adds rotatable mint-authority support to the Token program (additive
-`NewFungibleDefinitionWithAuthority` and `MintWithAuthority` instruction
-variants) plus an `Option<AccountId>` `mint_authority` pointer on
-`TokenDefinition::Fungible`. Authority gating uses the privacy-preserving
-circuit's `is_authorized` flag on a dedicated authority account, mirroring the
-SPL Token mint-authority model adapted for LEZ's per-account authorization
-semantics.
+This fork adds RFP-001 admin-authority semantics to the Token program: a
+fungible token can be defined with an `Option<AccountId>` mint authority,
+the authority can be rotated to a new admin account, and it can be
+**terminally revoked**. Authority gating is implemented via the agnostic
+`lez-approval` crate (`Authority` + `ApprovalError`) so the same pattern
+can be reused by other programs that need admin-gated operations.
 
-`demo.sh` at the repo root runs the end-to-end tracer:
+The implementation is additive — existing `NewFungibleDefinition` /
+`Mint` paths are unchanged. Three new instruction variants
+(`NewFungibleDefinitionWithAuthority`, `MintWithAuthority`,
+`RotateAuthority`, `RevokeAuthority`) plus an `Authority` field on
+`TokenDefinition::Fungible` are the entire wire surface.
+
+The submission writeup lives at
+[`logos-co/lambda-prize#62`](https://github.com/logos-co/lambda-prize/pull/62).
+
+### Standalone deployment
+
+The submission ships against a **standalone sequencer** (not the docker
+compose path above), matching the precedent set by LP-0012 (merged) and
+LP-0013 PR #57. The full bring-up — guest build, host build, sequencer
+launch, wallet wizard, account creation, demo flow — is scripted in
+`demo.sh` at the repo root:
 
 ```bash
 ./demo.sh
 ```
 
-It builds the Token program artifact, starts a standalone sequencer, creates
-four public accounts, defines a fungible token with a mint authority, mints
-1000 units through the authority, and prints the holder balance. Logs are
-written to `demo.log`. Prerequisites are listed in the script header.
+Prerequisites are listed in the script header (Rust, Cargo, `rzup`, the
+logos-blockchain-circuits setup). `RISC0_DEV_MODE=1` is the default for
+fast iteration; a video walkthrough must show `RISC0_DEV_MODE=0`. The
+script writes its full output to `demo.log`.
 
-The submission writeup lives at
-[`logos-co/lambda-prize` → `solutions/LP-0013.md`](https://github.com/logos-co/lambda-prize).
+### CLI walkthrough
+
+Each `wallet` invocation below assumes `NSSA_WALLET_HOME_DIR` is set to
+the sequencer's wallet config dir (e.g. `wallet/configs/debug`) and the
+sequencer is running locally — both handled automatically by `demo.sh`.
+
+**1. Define a fungible token with a mint authority:**
+
+```bash
+wallet token new-fungible-with-authority \
+    --definition-account-id "$DEF_ID" \
+    --supply-account-id "$SUP_ID" \
+    --name "my-token" \
+    --total-supply 0 \
+    --mint-authority "$AUTH_ID"
+```
+
+**2. Mint via the authority** (`AUTH_ID`'s keypair must sign the tx):
+
+```bash
+wallet token mint-with-authority \
+    --definition-account-id "$DEF_ID" \
+    --holder-account-id "$HOLD_ID" \
+    --authority-account-id "$AUTH_ID" \
+    --amount 1000
+```
+
+**3. Rotate the authority to a new admin:**
+
+```bash
+wallet token rotate-authority \
+    --definition-account-id "$DEF_ID" \
+    --authority-account-id "$AUTH_ID" \
+    --new-admin "$NEW_AUTH_ID"
+```
+
+**4. Terminally revoke the authority** — irreversible; subsequent
+`mint-with-authority` / `rotate-authority` / `revoke-authority` calls
+panic with `ApprovalError::Renounced`:
+
+```bash
+wallet token revoke-authority \
+    --definition-account-id "$DEF_ID" \
+    --authority-account-id "$NEW_AUTH_ID"
+```
+
+Confirm the result by reading the holder's account:
+
+```bash
+wallet account get --account-id "Public/$HOLD_ID"
+```
+
+`demo.sh` is the canonical scripted version of this sequence and
+asserts the expected post-state balance (1500 after rotate-then-mint,
+unchanged after the post-revoke rejected mint).
+
+### Cycle costs (LP-0013 instructions)
+
+LEZ has no Solana-style per-instruction compute-unit metric. The
+RISC0-native proxy is the user-cycle count produced by
+`risc0_zkvm::default_executor()`. The numbers below were captured on
+the committed `artifacts/program_methods/token.bin` (ELF sha256
+`493ce4e7…b37222`) via the `cycle_executor` bench bin — see
+[`docs/CYCLE_COSTS.md`](docs/CYCLE_COSTS.md) for raw output and
+reproduction.
+
+| Instruction | user_cycles | padded_cycles (2^po2) | segments | journal | Notes |
+|---|---:|---:|---:|---:|---|
+| `MintWithAuthority` (happy) | 154 858 | 262 144 | 1 | 1344 B | Definition + holding + authority pre-states |
+| `MintWithAuthority` (unauthorized) | — | — | — | — | Guest panic at `lez-approval/src/lib.rs:68`; no SessionInfo |
+| `RotateAuthority` (happy) | 127 350 | 262 144 | 1 | 984 B | Definition + authority pre-states |
+| `RevokeAuthority` (happy) | 103 913 | 262 144 | 1 | 808 B | Definition + authority pre-states |
+
+Reproduce locally:
+
+```bash
+RISC0_DEV_MODE=0 cargo run --release --bin cycle_executor -p integration_tests
+```
+
+Caveats: cycle counts are deterministic for a given ELF + input but
+wall-clock proof times are machine-dependent; rejected paths (guest
+panics) return `Err` from the executor and do not produce a cycle
+count. See `docs/CYCLE_COSTS.md` for the full caveat list.
+
+### Error codes
+
+Authority gating panics with a stable `lez_approval::ApprovalError`
+payload (Display impl is the canonical form a sequencer / indexer
+observer sees in logs).
+
+| Variant | Panic payload (Display) | Triggered by |
+|---|---|---|
+| `Unauthorized` | `not authorized: signer does not match admin authority` | Signer's `account_id` ≠ admin or `is_authorized` is `false` |
+| `Renounced` | `authority renounced: operation requires an active admin` | Calling any admin-gated op on a definition whose `Authority` is `None` |
+
+Source of truth: `lez-approval/src/lib.rs` (`ApprovalError` enum + `#[error(...)]` attrs).
+
+### Two-IDL story
+
+`artifacts/` ships **two** IDL files for the Token program:
+`token.idl.spel.json` (emitted by `spel generate-idl` against the
+SPEL-shape sidecar in `spel-sidecar/`) and `token.idl.json` (the
+canonical hand-authored IDL covering shapes the v0.4.0 SPEL CLI does
+not yet emit, e.g. the `errors` table). See
+[`docs/SPEL_STATUS.md`](docs/SPEL_STATUS.md) for the full disclosure
+— why two artifacts, the `nssa_core` version-collision rationale
+behind the sidecar approach, and the scaffold ↔ real-program
+mapping.
+
+### Limitations and follow-ups
+
+- **Fungible-only.** Authority lives on `TokenDefinition::Fungible`;
+  `TokenDefinition::NonFungible` is unchanged.
+- **Mint authority only.** No separate freeze / close / metadata-update
+  authority (out of scope for the RFP-001 minimal slice).
+- **Breaking Borsh layout change.** Adding the `authority` field to
+  `TokenDefinition::Fungible` is a positional Borsh-layout change; any
+  pre-existing serialized definition accounts would fail to deserialize
+  against the new layout. Mitigated for this submission by the fact that
+  LEZ devnet has no production Token state.
+- **No `FungibleV2` opt-in variant.** Deferred alternative path
+  considered to keep the change additive at the variant level rather
+  than the field level; not pursued in this submission.
+
+The submission writeup with the full FURPS self-assessment and success
+criteria checklist lives at
+[`logos-co/lambda-prize` → `solutions/LP-0013.md`](https://github.com/logos-co/lambda-prize/pull/62).
 
