@@ -26,3 +26,4 @@ integration_tests/configs/debug/
 
 # LP-0013 demo output
 demo.log
+lp-0013-build.log
