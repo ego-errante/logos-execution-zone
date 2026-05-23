@@ -4,6 +4,11 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use nssa_core::account::{AccountId, Data};
 use serde::{Deserialize, Serialize};
 
+// Re-export the approval primitives so downstream Token program callers don't
+// need to depend on `lez-approval` directly to construct/inspect authorities or
+// match on the panic-payload error variants.
+pub use lez_approval::{ApprovalError, Authority};
+
 /// Token Program Instruction.
 #[derive(Serialize, Deserialize)]
 pub enum Instruction {
@@ -70,17 +75,17 @@ pub enum Instruction {
     /// - Token Holding account (uninitialized or authorized and initialized).
     Mint { amount_to_mint: u128 },
 
-    /// Mint new tokens, gated by the mint authority recorded on the Token Definition
-    /// (LP-0013 / RFP-001). Panics with [`TokenError::Unauthorized`] if the authority
-    /// account is not authorized or its id does not match the recorded authority.
-    /// Panics with [`TokenError::AuthorityRevoked`] if the definition's mint authority
-    /// is `None`.
+    /// Mint new tokens, gated by the authority recorded on the Token Definition
+    /// (LP-0013 / RFP-001). Panics with [`ApprovalError::Unauthorized`] if the
+    /// authority account is not authorized or its id does not match the recorded
+    /// authority. Panics with [`ApprovalError::Renounced`] if the definition's
+    /// authority has been renounced.
     ///
     /// Required accounts (order matters):
     /// - Token Definition account (initialized, any authorization),
     /// - Token Holding account (uninitialized or authorized and initialized),
     /// - Mint Authority account (must be authorized; its id must equal the
-    ///   `mint_authority` field on the Token Definition).
+    ///   active admin in the `authority` field on the Token Definition).
     MintWithAuthority { amount_to_mint: u128 },
 
     /// Print a new NFT from the master copy.
@@ -89,6 +94,32 @@ pub enum Instruction {
     /// - NFT Master Token Holding account (authorized),
     /// - NFT Printed Copy Token Holding account (uninitialized, authorized).
     PrintNft,
+
+    /// Rotate the recorded authority on a Token Definition to `new_admin`
+    /// (LP-0013 / RFP-001). Panics with [`ApprovalError::Renounced`] if the
+    /// authority has been revoked, or [`ApprovalError::Unauthorized`] if the
+    /// supplied authority account does not match the current admin.
+    ///
+    /// `new_admin` is carried as an instruction argument rather than as an
+    /// account so the wire shape stays at two accounts (mirrors the
+    /// `mint_authority` arg of [`Self::NewFungibleDefinitionWithAuthority`]).
+    ///
+    /// Required accounts (order matters):
+    /// - Token Definition account (initialized, any authorization),
+    /// - Current Authority account (must be authorized; its id must equal the
+    ///   active admin in the `authority` field on the Token Definition).
+    RotateAuthority { new_admin: AccountId },
+
+    /// Terminally renounce the recorded authority on a Token Definition
+    /// (LP-0013 / RFP-001). Once renounced, subsequent
+    /// [`Self::MintWithAuthority`], [`Self::RotateAuthority`], and
+    /// [`Self::RevokeAuthority`] calls panic with [`ApprovalError::Renounced`].
+    ///
+    /// Required accounts (order matters):
+    /// - Token Definition account (initialized, any authorization),
+    /// - Current Authority account (must be authorized; its id must equal the
+    ///   active admin in the `authority` field on the Token Definition).
+    RevokeAuthority,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -109,46 +140,25 @@ pub enum TokenDefinition {
         name: String,
         total_supply: u128,
         metadata_id: Option<AccountId>,
-        /// Account permitted to mint additional supply (LP-0013 / RFP-001).
-        /// `None` for legacy definitions created via [`Instruction::NewFungibleDefinition`]
-        /// or after the authority has been revoked. The presence of an authority does NOT
-        /// gate the existing [`Instruction::Mint`] path; only [`Instruction::MintWithAuthority`]
-        /// checks this field.
+        /// Single-admin authority permitted to mint additional supply (LP-0013 /
+        /// RFP-001), expressed via the agnostic [`Authority`] primitive from the
+        /// `lez-approval` crate. [`Authority::renounced`] for legacy definitions
+        /// created via [`Instruction::NewFungibleDefinition`] or after the
+        /// authority has been revoked. The presence of an authority does NOT
+        /// gate the existing [`Instruction::Mint`] path; only
+        /// [`Instruction::MintWithAuthority`] checks this field.
         ///
         /// NOTE: this field is a breaking change to the Borsh layout of pre-existing
         /// `TokenDefinition::Fungible` accounts. LEZ has no backward-compat guarantee
         /// for in-flight schema changes; see solution README for the deferred
         /// `FungibleV2` / separate-PDA alternatives.
-        mint_authority: Option<AccountId>,
+        authority: Authority,
     },
     NonFungible {
         name: String,
         printable_supply: u128,
         metadata_id: AccountId,
     },
-}
-
-/// Deterministic error variants raised by the Token program when an instruction
-/// fails a precondition. Used as the panic message body so the off-chain caller
-/// can grep for a stable identifier; see [`Instruction::MintWithAuthority`] for
-/// the authorization paths that emit these.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum TokenError {
-    /// The supplied authority account is not authorized, or its id does not match
-    /// the `mint_authority` recorded on the Token Definition.
-    Unauthorized,
-    /// The Token Definition's `mint_authority` is `None` — minting via
-    /// [`Instruction::MintWithAuthority`] is permanently disabled for this token.
-    AuthorityRevoked,
-}
-
-impl std::fmt::Display for TokenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Unauthorized => f.write_str("TokenError::Unauthorized"),
-            Self::AuthorityRevoked => f.write_str("TokenError::AuthorityRevoked"),
-        }
-    }
 }
 
 impl TryFrom<&Data> for TokenDefinition {

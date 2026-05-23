@@ -108,6 +108,22 @@ fn main() {
                 .expect("PrintNft instruction requires exactly two accounts");
             token_program::print_nft::print_nft(master_account, printed_account)
         }
+        Instruction::RotateAuthority { new_admin } => {
+            let [definition_account, authority_account] = pre_states
+                .try_into()
+                .expect("RotateAuthority instruction requires exactly two accounts");
+            token_program::rotate::rotate_authority(
+                definition_account,
+                authority_account,
+                new_admin,
+            )
+        }
+        Instruction::RevokeAuthority => {
+            let [definition_account, authority_account] = pre_states
+                .try_into()
+                .expect("RevokeAuthority instruction requires exactly two accounts");
+            token_program::rotate::revoke_authority(definition_account, authority_account)
+        }
     };
 
     ProgramOutput::new(

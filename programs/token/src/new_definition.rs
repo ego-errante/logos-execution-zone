@@ -3,7 +3,7 @@ use nssa_core::{
     program::{AccountPostState, Claim},
 };
 use token_core::{
-    NewTokenDefinition, NewTokenMetadata, TokenDefinition, TokenHolding, TokenMetadata,
+    Authority, NewTokenDefinition, NewTokenMetadata, TokenDefinition, TokenHolding, TokenMetadata,
 };
 
 #[must_use]
@@ -29,7 +29,7 @@ pub fn new_fungible_definition(
         name,
         total_supply,
         metadata_id: None,
-        mint_authority: None,
+        authority: Authority::renounced(),
     };
     let token_holding = TokenHolding::Fungible {
         definition_id: definition_target_account.account_id,
@@ -56,6 +56,10 @@ pub fn new_fungible_definition_with_authority(
     total_supply: u128,
     mint_authority: Option<nssa_core::account::AccountId>,
 ) -> Vec<AccountPostState> {
+    let authority = match mint_authority {
+        Some(admin) => Authority::new(admin),
+        None => Authority::renounced(),
+    };
     assert_eq!(
         definition_target_account.account,
         Account::default(),
@@ -72,7 +76,7 @@ pub fn new_fungible_definition_with_authority(
         name,
         total_supply,
         metadata_id: None,
-        mint_authority,
+        authority,
     };
     let token_holding = TokenHolding::Fungible {
         definition_id: definition_target_account.account_id,
@@ -123,7 +127,7 @@ pub fn new_definition_with_metadata(
                 name,
                 total_supply,
                 metadata_id: Some(metadata_target_account.account_id),
-                mint_authority: None,
+                authority: Authority::renounced(),
             },
             TokenHolding::Fungible {
                 definition_id: definition_target_account.account_id,

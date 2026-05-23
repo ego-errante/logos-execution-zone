@@ -4634,6 +4634,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "lez-approval"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "nssa_core",
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.183"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9358,6 +9368,7 @@ name = "token_core"
 version = "0.1.0"
 dependencies = [
  "borsh",
+ "lez-approval",
  "nssa_core",
  "serde",
 ]

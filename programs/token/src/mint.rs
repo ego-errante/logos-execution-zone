@@ -2,7 +2,7 @@ use nssa_core::{
     account::{Account, AccountWithMetadata, Data},
     program::{AccountPostState, Claim},
 };
-use token_core::{TokenDefinition, TokenError, TokenHolding};
+use token_core::{TokenDefinition, TokenHolding};
 
 #[must_use]
 pub fn mint(
@@ -35,7 +35,7 @@ pub fn mint(
             TokenDefinition::Fungible {
                 name: _,
                 metadata_id: _,
-                mint_authority: _,
+                authority: _,
                 total_supply,
             },
             TokenHolding::Fungible {
@@ -74,16 +74,17 @@ pub fn mint(
 
 /// Authority-gated mint (LP-0013 / RFP-001).
 ///
-/// Verifies the `authority_account`'s id matches the `mint_authority` recorded on
-/// the Token Definition and that the authority account carries an authorization
-/// claim — i.e. its keypair signed the enclosing transaction. The Token Definition
-/// account itself does **not** need to be authorized: the authority is the signer.
+/// Verifies the `authority_account`'s id matches the active admin in the
+/// [`Authority`](token_core::Authority) recorded on the Token Definition and
+/// that the authority account carries an authorization claim — i.e. its keypair
+/// signed the enclosing transaction. The Token Definition account itself does
+/// **not** need to be authorized: the authority is the signer.
 ///
-/// Panics with [`TokenError::AuthorityRevoked`] if the definition's authority is
-/// `None`, or with [`TokenError::Unauthorized`] if the supplied authority account
-/// does not match or is not authorized. The panic message is the [`Display`] form
-/// of the variant — `"TokenError::Unauthorized"` / `"TokenError::AuthorityRevoked"`
-/// — and is stable across versions.
+/// Panics with [`ApprovalError::Renounced`](token_core::ApprovalError::Renounced)
+/// if the definition's authority has been renounced, or with
+/// [`ApprovalError::Unauthorized`](token_core::ApprovalError::Unauthorized) if
+/// the supplied authority account does not match or is not authorized. The panic
+/// message is the [`Display`] form of the variant and is stable across versions.
 #[must_use]
 pub fn mint_with_authority(
     definition_account: AccountWithMetadata,
@@ -94,22 +95,14 @@ pub fn mint_with_authority(
     let mut definition = TokenDefinition::try_from(&definition_account.account.data)
         .expect("Token Definition account must be valid");
 
-    let mint_authority = match &definition {
-        TokenDefinition::Fungible { mint_authority, .. } => *mint_authority,
+    let authority = match &definition {
+        TokenDefinition::Fungible { authority, .. } => *authority,
         TokenDefinition::NonFungible { .. } => {
             panic!("mint_with_authority is only supported for fungible tokens");
         }
     };
 
-    let Some(authorized_id) = mint_authority else {
-        panic!("{}", TokenError::AuthorityRevoked);
-    };
-
-    assert!(
-        authority_account.is_authorized && authority_account.account_id == authorized_id,
-        "{}",
-        TokenError::Unauthorized
-    );
+    authority.gate(&authority_account);
 
     let mut holding = if user_holding_account.account == Account::default() {
         TokenHolding::zeroized_from_definition(definition_account.account_id, &definition)
@@ -129,7 +122,7 @@ pub fn mint_with_authority(
             TokenDefinition::Fungible {
                 name: _,
                 metadata_id: _,
-                mint_authority: _,
+                authority: _,
                 total_supply,
             },
             TokenHolding::Fungible {

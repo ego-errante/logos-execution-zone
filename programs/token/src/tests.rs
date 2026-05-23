@@ -10,14 +10,16 @@ use nssa_core::{
     program::Claim,
 };
 use token_core::{
-    MetadataStandard, NewTokenDefinition, NewTokenMetadata, TokenDefinition, TokenHolding,
+    Authority, MetadataStandard, NewTokenDefinition, NewTokenMetadata, TokenDefinition,
+    TokenHolding,
 };
 
 use crate::{
     burn::burn,
-    mint::mint,
+    mint::{mint, mint_with_authority},
     new_definition::{new_definition_with_metadata, new_fungible_definition},
     print_nft::print_nft,
+    rotate::{revoke_authority, rotate_authority},
     transfer::transfer,
 };
 
@@ -39,7 +41,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply(),
                     metadata_id: None,
-                    mint_authority: None,
+                    authority: Authority::renounced(),
                 }),
                 nonce: 0_u128.into(),
             },
@@ -57,7 +59,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply(),
                     metadata_id: None,
-                    mint_authority: None,
+                    authority: Authority::renounced(),
                 }),
                 nonce: 0_u128.into(),
             },
@@ -139,7 +141,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply_burned(),
                     metadata_id: None,
-                    mint_authority: None,
+                    authority: Authority::renounced(),
                 }),
                 nonce: 0_u128.into(),
             },
@@ -213,7 +215,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply_mint(),
                     metadata_id: None,
-                    mint_authority: None,
+                    authority: Authority::renounced(),
                 }),
                 nonce: 0_u128.into(),
             },
@@ -288,7 +290,7 @@ impl AccountForTests {
                     name: String::from("test"),
                     total_supply: BalanceForTests::init_supply(),
                     metadata_id: None,
-                    mint_authority: None,
+                    authority: Authority::renounced(),
                 }),
                 nonce: 0_u128.into(),
             },
@@ -1050,4 +1052,160 @@ fn print_nft_success() {
         *post_printed.account(),
         AccountForTests::holding_account_printed_nft().account
     );
+}
+
+// ---------------------------------------------------------------------------
+// LP-0013 / RFP-001 — rotate / revoke authority tests
+// ---------------------------------------------------------------------------
+
+/// Construct a Token Definition account whose Fungible `authority` field is
+/// the provided `Authority` value. `definition_id` is the on-chain id of the
+/// definition account itself; it is irrelevant to authority checks but must
+/// be set for completeness.
+fn definition_with_authority(
+    definition_id: AccountId,
+    authority: Authority,
+) -> AccountWithMetadata {
+    AccountWithMetadata {
+        account: Account {
+            program_owner: [5_u32; 8],
+            balance: 0_u128,
+            data: Data::from(&TokenDefinition::Fungible {
+                name: String::from("test"),
+                total_supply: 100_000_u128,
+                metadata_id: None,
+                authority,
+            }),
+            nonce: 0_u128.into(),
+        },
+        is_authorized: false,
+        account_id: definition_id,
+    }
+}
+
+/// Construct an account that stands in for the signing authority. `is_authorized`
+/// reflects whether the underlying keypair signed the transaction.
+fn authority_signer(authority_id: AccountId, is_authorized: bool) -> AccountWithMetadata {
+    AccountWithMetadata {
+        account: Account::default(),
+        is_authorized,
+        account_id: authority_id,
+    }
+}
+
+#[test]
+fn rotate_authority_with_valid_inputs_succeeds() {
+    let definition_id = AccountId::new([15; 32]);
+    let admin_id = AccountId::new([20; 32]);
+    let new_admin_id = AccountId::new([21; 32]);
+
+    let definition = definition_with_authority(definition_id, Authority::new(admin_id));
+    let authority = authority_signer(admin_id, true);
+
+    let post_states = rotate_authority(definition, authority, new_admin_id);
+
+    let [definition_post, _authority_post] = post_states.try_into().unwrap();
+    let post_def =
+        TokenDefinition::try_from(&definition_post.account().data).expect("valid post-state");
+    let TokenDefinition::Fungible {
+        authority: post_authority,
+        ..
+    } = post_def
+    else {
+        panic!("expected Fungible definition")
+    };
+    assert_eq!(post_authority, Authority::new(new_admin_id));
+}
+
+#[should_panic(expected = "not authorized: signer does not match admin authority")]
+#[test]
+fn rotate_authority_without_authorization_fails() {
+    let definition_id = AccountId::new([15; 32]);
+    let admin_id = AccountId::new([20; 32]);
+    let imposter_id = AccountId::new([99; 32]);
+    let new_admin_id = AccountId::new([21; 32]);
+
+    let definition = definition_with_authority(definition_id, Authority::new(admin_id));
+    // Imposter is "authorized" (their key signed) but is not the admin.
+    let imposter = authority_signer(imposter_id, true);
+
+    let _post_states = rotate_authority(definition, imposter, new_admin_id);
+}
+
+#[test]
+fn revoke_authority_with_valid_inputs_succeeds() {
+    let definition_id = AccountId::new([15; 32]);
+    let admin_id = AccountId::new([20; 32]);
+
+    let definition = definition_with_authority(definition_id, Authority::new(admin_id));
+    let authority = authority_signer(admin_id, true);
+
+    let post_states = revoke_authority(definition, authority);
+
+    let [definition_post, _authority_post] = post_states.try_into().unwrap();
+    let post_def =
+        TokenDefinition::try_from(&definition_post.account().data).expect("valid post-state");
+    let TokenDefinition::Fungible {
+        authority: post_authority,
+        ..
+    } = post_def
+    else {
+        panic!("expected Fungible definition")
+    };
+    assert_eq!(post_authority, Authority::renounced());
+}
+
+#[should_panic(expected = "authority renounced: operation requires an active admin")]
+#[test]
+fn revoke_authority_makes_subsequent_mint_fail() {
+    let definition_id = AccountId::new([15; 32]);
+    let admin_id = AccountId::new([20; 32]);
+    let holding_id = AccountId::new([17; 32]);
+
+    // 1) Start with an active authority, revoke it.
+    let definition = definition_with_authority(definition_id, Authority::new(admin_id));
+    let authority = authority_signer(admin_id, true);
+    let post_states = revoke_authority(definition, authority);
+    let [definition_post, _authority_post] = post_states.try_into().unwrap();
+
+    // 2) Reconstruct the post-revoke definition as a fresh input account.
+    let revoked_definition = AccountWithMetadata {
+        account: definition_post.account().clone(),
+        is_authorized: false,
+        account_id: definition_id,
+    };
+
+    // 3) Holding account starts uninitialized; the admin signer would still
+    //    like to mint — should panic with `Renounced`.
+    let holding = AccountWithMetadata {
+        account: Account::default(),
+        is_authorized: true,
+        account_id: holding_id,
+    };
+    let authority_again = authority_signer(admin_id, true);
+
+    let _post_states = mint_with_authority(revoked_definition, holding, authority_again, 1_000);
+}
+
+#[should_panic(expected = "authority renounced: operation requires an active admin")]
+#[test]
+fn rotate_after_revoke_fails() {
+    let definition_id = AccountId::new([15; 32]);
+    let admin_id = AccountId::new([20; 32]);
+    let new_admin_id = AccountId::new([21; 32]);
+
+    // 1) Revoke.
+    let definition = definition_with_authority(definition_id, Authority::new(admin_id));
+    let authority = authority_signer(admin_id, true);
+    let post_states = revoke_authority(definition, authority);
+    let [definition_post, _authority_post] = post_states.try_into().unwrap();
+
+    // 2) Re-feed the post-revoke definition into rotate — must panic.
+    let revoked_definition = AccountWithMetadata {
+        account: definition_post.account().clone(),
+        is_authorized: false,
+        account_id: definition_id,
+    };
+    let authority_again = authority_signer(admin_id, true);
+    let _post_states = rotate_authority(revoked_definition, authority_again, new_admin_id);
 }

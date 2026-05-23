@@ -2,7 +2,7 @@
 
 use ata_core::{compute_ata_seed, get_associated_token_account_id};
 use nssa_core::account::{Account, AccountId, AccountWithMetadata, Data};
-use token_core::{TokenDefinition, TokenHolding};
+use token_core::{Authority, TokenDefinition, TokenHolding};
 
 const ATA_PROGRAM_ID: nssa_core::program::ProgramId = [1u32; 8];
 const TOKEN_PROGRAM_ID: nssa_core::program::ProgramId = [2u32; 8];
@@ -39,7 +39,7 @@ fn definition_account() -> AccountWithMetadata {
                 name: "TEST".to_string(),
                 total_supply: 1000,
                 metadata_id: None,
-                mint_authority: None,
+                authority: Authority::renounced(),
             }),
             nonce: nssa_core::account::Nonce(0),
         },

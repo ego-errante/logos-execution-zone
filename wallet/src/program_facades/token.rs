@@ -899,4 +899,91 @@ impl Token<'_> {
             .send_transaction(NSSATransaction::Public(tx))
             .await?)
     }
+
+    /// Rotate the recorded mint authority on a Token Definition to `new_admin`
+    /// (LP-0013 / RFP-001). Signs with the current authority's key only.
+    pub async fn send_rotate_authority(
+        &self,
+        definition_account_id: AccountId,
+        authority_account_id: AccountId,
+        new_admin: AccountId,
+    ) -> Result<HashType, ExecutionFailureKind> {
+        let account_ids = vec![definition_account_id, authority_account_id];
+        let instruction = Instruction::RotateAuthority { new_admin };
+
+        let nonces = self
+            .0
+            .get_accounts_nonces(vec![authority_account_id])
+            .await
+            .map_err(ExecutionFailureKind::SequencerError)?;
+
+        let authority_sk = self
+            .0
+            .storage
+            .key_chain()
+            .pub_account_signing_key(authority_account_id)
+            .ok_or(ExecutionFailureKind::KeyNotFoundError)?;
+        let private_keys = vec![authority_sk];
+
+        let message = nssa::public_transaction::Message::try_new(
+            Program::token().id(),
+            account_ids,
+            nonces,
+            instruction,
+        )
+        .unwrap();
+        let witness_set =
+            nssa::public_transaction::WitnessSet::for_message(&message, &private_keys);
+
+        let tx = nssa::PublicTransaction::new(message, witness_set);
+
+        Ok(self
+            .0
+            .sequencer_client
+            .send_transaction(NSSATransaction::Public(tx))
+            .await?)
+    }
+
+    /// Terminally revoke the recorded mint authority on a Token Definition
+    /// (LP-0013 / RFP-001). Signs with the current authority's key only.
+    pub async fn send_revoke_authority(
+        &self,
+        definition_account_id: AccountId,
+        authority_account_id: AccountId,
+    ) -> Result<HashType, ExecutionFailureKind> {
+        let account_ids = vec![definition_account_id, authority_account_id];
+        let instruction = Instruction::RevokeAuthority;
+
+        let nonces = self
+            .0
+            .get_accounts_nonces(vec![authority_account_id])
+            .await
+            .map_err(ExecutionFailureKind::SequencerError)?;
+
+        let authority_sk = self
+            .0
+            .storage
+            .key_chain()
+            .pub_account_signing_key(authority_account_id)
+            .ok_or(ExecutionFailureKind::KeyNotFoundError)?;
+        let private_keys = vec![authority_sk];
+
+        let message = nssa::public_transaction::Message::try_new(
+            Program::token().id(),
+            account_ids,
+            nonces,
+            instruction,
+        )
+        .unwrap();
+        let witness_set =
+            nssa::public_transaction::WitnessSet::for_message(&message, &private_keys);
+
+        let tx = nssa::PublicTransaction::new(message, witness_set);
+
+        Ok(self
+            .0
+            .sequencer_client
+            .send_transaction(NSSATransaction::Public(tx))
+            .await?)
+    }
 }

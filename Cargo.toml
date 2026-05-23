@@ -11,6 +11,7 @@ members = [
   "wallet",
   "wallet-ffi",
   "common",
+  "lez-approval",
   "nssa",
   "nssa/core",
   "programs/amm/core",
@@ -71,6 +72,7 @@ ata_program = { path = "programs/associated_token_account" }
 authenticated_transfer_core = { path = "programs/authenticated_transfer/core" }
 faucet_core = { path = "programs/faucet/core" }
 vault_core = { path = "programs/vault/core" }
+lez-approval = { path = "lez-approval" }
 test_program_methods = { path = "test_program_methods" }
 testnet_initial_state = { path = "testnet_initial_state" }
 

@@ -15,7 +15,7 @@ use key_protocol::key_management::key_tree::chain_index::ChainIndex;
 use log::info;
 use nssa::program::Program;
 use sequencer_service_rpc::RpcClient as _;
-use token_core::{TokenDefinition, TokenHolding};
+use token_core::{Authority, TokenDefinition, TokenHolding};
 use tokio::test;
 use wallet::{
     account::Label,
@@ -106,7 +106,7 @@ async fn create_and_transfer_public_token() -> Result<()> {
             name: name.clone(),
             total_supply,
             metadata_id: None,
-            mint_authority: None,
+            authority: Authority::renounced(),
         }
     );
 
@@ -199,7 +199,7 @@ async fn create_and_transfer_public_token() -> Result<()> {
             name: name.clone(),
             total_supply: total_supply - burn_amount,
             metadata_id: None,
-            mint_authority: None,
+            authority: Authority::renounced(),
         }
     );
 
@@ -247,7 +247,7 @@ async fn create_and_transfer_public_token() -> Result<()> {
             name,
             total_supply: total_supply - burn_amount + mint_amount,
             metadata_id: None,
-            mint_authority: None,
+            authority: Authority::renounced(),
         }
     );
 
@@ -352,7 +352,7 @@ async fn create_and_transfer_token_with_private_supply() -> Result<()> {
             name: name.clone(),
             total_supply,
             metadata_id: None,
-            mint_authority: None,
+            authority: Authority::renounced(),
         }
     );
 
@@ -416,7 +416,7 @@ async fn create_and_transfer_token_with_private_supply() -> Result<()> {
             name,
             total_supply: total_supply - burn_amount,
             metadata_id: None,
-            mint_authority: None,
+            authority: Authority::renounced(),
         }
     );
 
@@ -581,7 +581,7 @@ async fn create_token_with_private_definition() -> Result<()> {
             name: name.clone(),
             total_supply: total_supply + mint_amount_public,
             metadata_id: None,
-            mint_authority: None,
+            authority: Authority::renounced(),
         }
     );
 
@@ -1235,7 +1235,7 @@ async fn create_token_using_labels() -> Result<()> {
             name,
             total_supply,
             metadata_id: None,
-            mint_authority: None,
+            authority: Authority::renounced(),
         }
     );
 

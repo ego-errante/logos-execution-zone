@@ -15,7 +15,7 @@ use integration_tests::{
 use log::info;
 use nssa::program::Program;
 use sequencer_service_rpc::RpcClient as _;
-use token_core::{TokenDefinition, TokenHolding};
+use token_core::{Authority, TokenDefinition, TokenHolding};
 use tokio::test;
 use wallet::cli::{
     Command, SubcommandReturnValue,
@@ -345,7 +345,7 @@ async fn transfer_and_burn_via_ata() -> Result<()> {
             name: "TEST".to_owned(),
             total_supply: total_supply - burn_amount,
             metadata_id: None,
-            mint_authority: None,
+            authority: Authority::renounced(),
         }
     );
 
@@ -646,7 +646,7 @@ async fn burn_via_ata_private_owner() -> Result<()> {
             name: "TEST".to_owned(),
             total_supply: total_supply - burn_amount,
             metadata_id: None,
-            mint_authority: None,
+            authority: Authority::renounced(),
         }
     );
 

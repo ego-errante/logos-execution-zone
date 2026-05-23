@@ -132,6 +132,26 @@ pub enum TokenProgramAgnosticSubcommand {
         #[arg(long)]
         amount: u128,
     },
+    /// Rotate the recorded mint authority on a Token Definition to a new
+    /// admin (LP-0013 / RFP-001). Must be signed by the current authority.
+    RotateAuthority {
+        #[arg(long)]
+        definition_account_id: AccountId,
+        #[arg(long)]
+        authority_account_id: AccountId,
+        #[arg(long)]
+        new_admin: AccountId,
+    },
+    /// Terminally revoke the recorded mint authority on a Token Definition
+    /// (LP-0013 / RFP-001). Must be signed by the current authority. After
+    /// this, subsequent `mint-with-authority`, `rotate-authority`, and
+    /// `revoke-authority` calls panic with `ApprovalError::Renounced`.
+    RevokeAuthority {
+        #[arg(long)]
+        definition_account_id: AccountId,
+        #[arg(long)]
+        authority_account_id: AccountId,
+    },
 }
 
 impl WalletSubcommand for TokenProgramAgnosticSubcommand {
@@ -463,6 +483,29 @@ impl WalletSubcommand for TokenProgramAgnosticSubcommand {
                         authority_account_id,
                         amount,
                     )
+                    .await?;
+                Ok(SubcommandReturnValue::Empty)
+            }
+            Self::RotateAuthority {
+                definition_account_id,
+                authority_account_id,
+                new_admin,
+            } => {
+                Token(wallet_core)
+                    .send_rotate_authority(
+                        definition_account_id,
+                        authority_account_id,
+                        new_admin,
+                    )
+                    .await?;
+                Ok(SubcommandReturnValue::Empty)
+            }
+            Self::RevokeAuthority {
+                definition_account_id,
+                authority_account_id,
+            } => {
+                Token(wallet_core)
+                    .send_revoke_authority(definition_account_id, authority_account_id)
                     .await?;
                 Ok(SubcommandReturnValue::Empty)
             }

@@ -1,5 +1,5 @@
 [package]
-name = "token_core"
+name = "lez-approval"
 version = "0.1.0"
 edition = "2024"
 license = { workspace = true }
@@ -9,6 +9,6 @@ workspace = true
 
 [dependencies]
 nssa_core.workspace = true
-serde.workspace = true
 borsh.workspace = true
-lez-approval.workspace = true
+thiserror.workspace = true
+serde.workspace = true
