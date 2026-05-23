@@ -1,0 +1,22 @@
+# Sidecar-isolated package used ONLY to host the SPEL-shape mirror of the
+# Token program for `spel generate-idl`. The empty `[workspace]` table
+# deliberately breaks out of the parent Cargo workspace so this crate's deps
+# (notably the SPEL-pinned `nssa_core` v0.2.0-rc3) don't collide with the
+# workspace's local `nssa_core` v0.1.0. See `docs/SPEL_STATUS.md`.
+#
+# This crate is NOT expected to compile against riscv32; `spel generate-idl`
+# only parses the source file. The dep list is here for documentation and so
+# the file remains a syntactically-valid Cargo package.
+[workspace]
+
+[package]
+name = "token-spel-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+spel-framework = { git = "https://github.com/logos-co/spel.git", tag = "v0.4.0" }
+nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["host"] }
+serde = { version = "1", features = ["derive"] }
