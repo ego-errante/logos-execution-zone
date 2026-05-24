@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - main
+      - lp-0013-token-authorities
     paths-ignore:
       - "**.md"
       - "!.github/workflows/*.yml"
