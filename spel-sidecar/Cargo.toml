@@ -20,3 +20,9 @@ license = "MIT OR Apache-2.0"
 spel-framework = { git = "https://github.com/logos-co/spel.git", tag = "v0.4.0" }
 nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["host"] }
 serde = { version = "1", features = ["derive"] }
+
+# These deps are declared so the Cargo.toml is a syntactically-valid manifest
+# the `spel` CLI can parse, but the crate has no `src/` and is not compiled.
+# Suppress cargo-machete's correct-but-not-actionable "unused" report.
+[package.metadata.cargo-machete]
+ignored = ["nssa_core", "serde", "spel-framework"]

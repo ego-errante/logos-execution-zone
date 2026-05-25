@@ -12,8 +12,6 @@ name = "fixed-supply"
 path = "src/bin/main.rs"
 
 [dependencies]
-common.workspace = true
-nssa.workspace = true
 nssa_core.workspace = true
 sequencer_service_rpc = { workspace = true, features = ["client"] }
 token_core.workspace = true
