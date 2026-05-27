@@ -198,6 +198,11 @@ step "Mint 1000 units via the authority"
     --holder-account-id "$HOLD_ID" \
     --authority-account-id "$AUTH_ID" \
     --amount 1000 2>&1 | tee -a "$DEMO_LOG"
+# Wait for the mint to land in a block before submitting the rotate. Both txs
+# are signed by AUTH_ID; if rotate is submitted before mint lands, the wallet
+# uses the same nonce for both and the sequencer rejects rotate with "Nonce
+# mismatch". Integration tests do the equivalent via wait_for_block().
+sleep 20
 
 step "Create second authority account for rotation"
 NEW_AUTH_ID=$("$WALLET_BIN" account new public --label demo-auth2 2>&1 | tee -a "$DEMO_LOG" | extract_account_id)
