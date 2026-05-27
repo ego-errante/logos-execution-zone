@@ -91,8 +91,8 @@ pub enum Instruction {
     /// - Token Definition account (initialized, any authorization),
     /// - Token Holding account (uninitialized or authorized and initialized),
     /// - Mint Authority account (must be authorized; its id must equal the active admin in the
-    ///   `authority` field on the Token Definition). Claimed by the Token program on
-    ///   first use — see [`Self::NewFungibleDefinitionWithAuthority`].
+    ///   `authority` field on the Token Definition). Claimed by the Token program on first use —
+    ///   see [`Self::NewFungibleDefinitionWithAuthority`].
     MintWithAuthority { amount_to_mint: u128 },
 
     /// Print a new NFT from the master copy.
@@ -114,8 +114,8 @@ pub enum Instruction {
     /// Required accounts (order matters):
     /// - Token Definition account (initialized, any authorization),
     /// - Current Authority account (must be authorized; its id must equal the active admin in the
-    ///   `authority` field on the Token Definition). Claimed by the Token program on
-    ///   first use — see [`Self::NewFungibleDefinitionWithAuthority`].
+    ///   `authority` field on the Token Definition). Claimed by the Token program on first use —
+    ///   see [`Self::NewFungibleDefinitionWithAuthority`].
     RotateAuthority { new_admin: AccountId },
 
     /// Terminally renounce the recorded authority on a Token Definition
@@ -126,8 +126,8 @@ pub enum Instruction {
     /// Required accounts (order matters):
     /// - Token Definition account (initialized, any authorization),
     /// - Current Authority account (must be authorized; its id must equal the active admin in the
-    ///   `authority` field on the Token Definition). Claimed by the Token program on
-    ///   first use — see [`Self::NewFungibleDefinitionWithAuthority`].
+    ///   `authority` field on the Token Definition). Claimed by the Token program on first use —
+    ///   see [`Self::NewFungibleDefinitionWithAuthority`].
     RevokeAuthority,
 }
 
