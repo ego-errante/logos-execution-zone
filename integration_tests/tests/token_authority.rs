@@ -441,7 +441,7 @@ async fn mint_by_authority_then_rotate_then_mint_by_new_authority() -> Result<()
         def,
         TokenDefinition::Fungible {
             name: name.clone(),
-            total_supply,
+            total_supply: first_mint,
             metadata_id: None,
             authority: Authority::new(new_authority_id),
         },
