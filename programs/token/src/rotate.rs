@@ -9,7 +9,7 @@
 
 use nssa_core::{
     account::{AccountId, AccountWithMetadata, Data},
-    program::AccountPostState,
+    program::{AccountPostState, Claim},
 };
 use token_core::TokenDefinition;
 
@@ -40,7 +40,7 @@ pub fn rotate_authority(
 
     vec![
         AccountPostState::new(definition_post),
-        AccountPostState::new(authority_post),
+        AccountPostState::new_claimed_if_default(authority_post, Claim::Authorized),
     ]
 }
 
@@ -70,6 +70,6 @@ pub fn revoke_authority(
 
     vec![
         AccountPostState::new(definition_post),
-        AccountPostState::new(authority_post),
+        AccountPostState::new_claimed_if_default(authority_post, Claim::Authorized),
     ]
 }

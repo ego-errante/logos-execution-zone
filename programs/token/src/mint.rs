@@ -152,6 +152,6 @@ pub fn mint_with_authority(
     vec![
         AccountPostState::new(definition_post),
         AccountPostState::new_claimed_if_default(holding_post, Claim::Authorized),
-        AccountPostState::new(authority_post),
+        AccountPostState::new_claimed_if_default(authority_post, Claim::Authorized),
     ]
 }

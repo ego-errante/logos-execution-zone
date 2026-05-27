@@ -149,7 +149,7 @@ else
 fi
 
 step "Start standalone sequencer"
-"$SEQUENCER_BIN" "$REPO_ROOT/sequencer/service/configs/debug/sequencer_config.json" >>"$DEMO_LOG" 2>&1 &
+"$SEQUENCER_BIN" "$REPO_ROOT/sequencer/service/configs/debug/sequencer_config.json" > >(tee -a "$DEMO_LOG") 2>&1 &
 SEQ_PID=$!
 trap 'echo "Stopping sequencer (PID $SEQ_PID)"; kill "$SEQ_PID" 2>/dev/null || true; wait "$SEQ_PID" 2>/dev/null || true' EXIT
 

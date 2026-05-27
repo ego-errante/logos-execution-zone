@@ -2741,8 +2741,6 @@ name = "fixed-supply"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "common",
- "nssa",
  "nssa_core",
  "sequencer_service_rpc",
  "token_core",
@@ -10121,8 +10119,6 @@ name = "variable-supply"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "common",
- "nssa",
  "nssa_core",
  "sequencer_service_rpc",
  "token_core",

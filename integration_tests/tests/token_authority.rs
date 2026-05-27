@@ -384,3 +384,84 @@ async fn revoke_after_rotate_uses_current_authority() -> Result<()> {
     info!("revoke_after_rotate_uses_current_authority succeeded");
     Ok(())
 }
+
+/// Regression: mint-by-original-authority followed by rotate. Pre-fix, the
+/// rotate transaction was rejected by the validator with
+/// `NonDefaultAccountWithDefaultOwner` because the original authority account's
+/// nonce was bumped by the prior mint but no program had claimed it. After the
+/// fix in `mint_with_authority`/`rotate_authority`/`revoke_authority`, the
+/// authority account is claimed on first use and rule 7 passes on subsequent
+/// uses. Mirrors `demo.sh`'s full happy-path arc.
+#[test]
+async fn mint_by_authority_then_rotate_then_mint_by_new_authority() -> Result<()> {
+    let mut ctx = TestContext::new().await?;
+
+    let definition_id = new_public_account(&mut ctx).await?;
+    let supply_id = new_public_account(&mut ctx).await?;
+    let old_authority_id = new_public_account(&mut ctx).await?;
+    let new_authority_id = new_public_account(&mut ctx).await?;
+    let holder_id = new_public_account(&mut ctx).await?;
+
+    let name = "MINT THEN ROTATE THEN MINT".to_owned();
+    let total_supply: u128 = 0;
+    let first_mint: u128 = 1000;
+    let second_mint: u128 = 500;
+
+    Token(ctx.wallet())
+        .send_new_definition_with_authority(
+            definition_id,
+            supply_id,
+            name.clone(),
+            total_supply,
+            Some(old_authority_id),
+        )
+        .await?;
+    wait_for_block().await;
+
+    // First mint, signed by the original authority. Pre-fix this succeeded too,
+    // but it left old_authority_id with bumped nonce and unclaimed owner.
+    Token(ctx.wallet())
+        .send_mint_with_authority(definition_id, holder_id, old_authority_id, first_mint)
+        .await?;
+    wait_for_block().await;
+
+    assert_eq!(read_balance(&ctx, holder_id).await?, first_mint);
+
+    // Rotate, signed by the original authority. Pre-fix this tx was rejected
+    // by rule 7 (`NonDefaultAccountWithDefaultOwner`) because old_authority_id
+    // had non-default nonce in pre-state but the handler returned a post-state
+    // with default program owner. Post-fix the handler claims it.
+    Token(ctx.wallet())
+        .send_rotate_authority(definition_id, old_authority_id, new_authority_id)
+        .await?;
+    wait_for_block().await;
+
+    let def = read_definition(&ctx, definition_id).await?;
+    assert_eq!(
+        def,
+        TokenDefinition::Fungible {
+            name: name.clone(),
+            total_supply,
+            metadata_id: None,
+            authority: Authority::new(new_authority_id),
+        },
+        "rotate must have updated the authority field",
+    );
+
+    // Second mint, signed by the new authority. Should land cleanly and add to
+    // the existing balance.
+    Token(ctx.wallet())
+        .send_mint_with_authority(definition_id, holder_id, new_authority_id, second_mint)
+        .await?;
+    wait_for_block().await;
+
+    assert_eq!(
+        read_balance(&ctx, holder_id).await?,
+        first_mint + second_mint,
+        "holder balance should be the sum of both mints (regression: pre-fix \
+         the rotate was silently rejected and second mint never landed)",
+    );
+
+    info!("mint_by_authority_then_rotate_then_mint_by_new_authority succeeded");
+    Ok(())
+}
